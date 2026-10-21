@@ -68,11 +68,7 @@ public final class CheckAndCountFilesTask extends Task<Long> {
         }
         
         for (File child : children) {
-            if (child.isFile()) {
-                counter.increase();
-            } else {
-                processEntryImpl(child, entry);
-            }
+            processEntryImpl(child, entry);
         }
     }
 }

@@ -1,6 +1,7 @@
 package io.github.coderodde.zipfx;
 
 import java.util.Objects;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 
 /**
@@ -9,7 +10,7 @@ import javafx.concurrent.Task;
  */
 public final class FileCountUpdateTask extends Task<Void> {
 
-    private static final long COUNT_UPDATE_SLEEP = 200L;
+    private static final long COUNT_UPDATE_SLEEP = 100L;
     
     private final ZipFX app;
     private final FileCounter fileCounter;
@@ -34,8 +35,10 @@ public final class FileCountUpdateTask extends Task<Void> {
                 return null;
             }
             
-            app.setStatusBarText(
-                "Files counted: &d".formatted(fileCounter.getCount()));
+            Platform.runLater(() -> {
+                app.setStatusBarText(
+                    "Files counted: %d".formatted(fileCounter.getCount()));
+            });
             
             Misc.sleep(COUNT_UPDATE_SLEEP);
         }

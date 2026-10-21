@@ -1,11 +1,17 @@
 package io.github.coderodde.zipfx;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -34,6 +40,7 @@ public class ZipFX extends Application {
     private static final double WINDOW_HEIGHT = 350.0;
     
     private static final long STATUS_MESSAGE_EMPTY_LIST_MILLIS = 3000L;
+    private static final long STATUS_MESSAGE_ZIP_IS_SOURCE     = 3000L;
 
     private final Button buttonAddFile   = new Button("Add file");
     private final Button buttonAddFolder = new Button("Add folder");
@@ -84,6 +91,17 @@ public class ZipFX extends Application {
             }
         });
         
+        buttonDoZip.setOnAction(event -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Choose the .zip file");
+            
+            File file = chooser.showSaveDialog(stage);
+            
+            if (file != null) {
+                zipAllSelected(stage);
+            }
+        });
+        
 //        statusBar.getChildren()
 //                 .addAll(labelStatusTitle,
 //                         labelStatusText);
@@ -113,7 +131,7 @@ public class ZipFX extends Application {
         setStatusMessage("Nothing to zip.", STATUS_MESSAGE_EMPTY_LIST_MILLIS);
     }
     
-    private void zipAllSelected() {
+    private void zipAllSelected(Stage stage) {
         if (fileList.isEmpty()) {
             statusBarShowEmptyListMessage();
             return;
@@ -144,22 +162,104 @@ public class ZipFX extends Application {
         FileCountUpdateTask fileCounterUpdateTask = 
             new FileCountUpdateTask(this, fileCounter);
         
+        countTask.setOnSucceeded(event -> {
+            long count = countTask.getValue();
+            
+            setStatusBarText("Files to zip: " + count);
+            
+//            zipAll(fileList, stage);
+        });
+        
         Thread zippingThread       = new Thread(countTask);
         Thread counterUpdateThread = new Thread(fileCounterUpdateTask);
         
-       
-        
         zippingThread.start();
         counterUpdateThread.start();
-        
     }
     
-    private static void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException ex) {
+    private void zipAll(FileList fileList, Stage stage) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Select the target .zip file");
+        
+        File file = chooser.showSaveDialog(stage);
+        
+        if (file != null) {
+            try {
+                zipAllImpl(fileList, file);
+            } catch (IOException ex) {
+                setStatusMessage(ex.getMessage(), STATUS_MESSAGE_EMPTY_LIST_MILLIS);
+            }
+        }
+    }
+    
+    private static void zipAllImpl(FileList fileList, File zipFile) 
+    throws IOException {
+        
+        Path target = zipFile.toPath().toAbsolutePath().normalize();
+        
+        checkFileListContainsNoZipFile(fileList, zipFile);
+        
+        ZipOutputStream zos = 
+            new ZipOutputStream(Files.newOutputStream(zipFile.toPath()));
+        
+        for (FileListEntry entry : fileList) {
+            Path path = entry.file().toPath().toAbsolutePath().normalize();
             
-            LOGGER.log(Level.WARNING, "Sleeping failed: {}", ex.getMessage());
+            if (path.getFileName() == null) {
+                LOGGER.log(Level.WARNING, 
+                           "Filesystem root is requested for zipping.");
+            }
+            
+            addEntry(zos, 
+                     path, 
+                     path.getFileName().toString(),
+                     target);
+        }
+    }
+    
+    private static void addEntry(ZipOutputStream zos,
+                                 Path path,
+                                 String entryName,
+                                 Path output) throws IOException {
+        
+        if (Files.isSymbolicLink(path) || path.equals(output)) {
+            return;
+        }
+        
+        if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+            zos.putNextEntry(new ZipEntry(entryName + "/"));
+            zos.closeEntry();
+            
+            try (var children = Files.newDirectoryStream(path)) {
+                for (Path child : children) {
+                    addEntry(zos,
+                             child,
+                             entryName + "/" + child.getFileName(),
+                             output);
+                }
+            }
+        } else if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
+            zos.putNextEntry(new ZipEntry(entryName));
+            Files.copy(path, zos);
+            zos.closeEntry();
+        } else {
+            throw new IOException("Not a regular file or directory: " + path);
+        }
+    }
+    
+    private static void checkFileListContainsNoZipFile(
+        FileList fileList, 
+        File zipFile) throws IOException {
+        
+        for (FileListEntry entry : fileList) {
+            if (entry.file()
+                     .toPath()
+                     .toAbsolutePath()
+                     .normalize()
+                     .equals(zipFile)) {
+                
+                throw new IOException("Output ZIP is a also a source file.");
+            }
         }
     }
     
