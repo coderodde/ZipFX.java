@@ -14,15 +14,19 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
 /**
@@ -41,7 +45,36 @@ public class ZipFX extends Application {
     
     private static final long STATUS_MESSAGE_EMPTY_LIST_MILLIS = 3000L;
     private static final long STATUS_MESSAGE_ZIP_IS_SOURCE     = 3000L;
+    
+    private static final String FXML_ADD_FOLDER_FILE_CSS = 
+            """
+            -fx-border-color: #666; 
+            -fx-border-width: 1 0 1 1;
+            -fx-border-style: solid; 
+            -fx-background-color: black; 
+            -fx-text-fill: white;
+            -fx-font-family: "sans-serfi";
+            -fx-font-size: 12px;
+            -fx-min-width: 100px;
+            -fx-pref-width: 100px;
+            -fx-max-width: 100px;
+            """;
 
+    private static final String FXML_ZIP_BUTTON_CSS = 
+            """
+            -fx-border-color: #666; 
+            -fx-border-width: 1px;
+            -fx-border-style: solid; 
+            -fx-background-color: black; 
+            -fx-text-fill: white;
+            -fx-font-family: "sans-serfi";
+            -fx-font-size: 12px;
+            -fx-min-width: 100px;
+            -fx-pref-width: 100px;
+            -fx-max-width: 100px;
+            """;
+            
+    
     private final Button buttonAddFile   = new Button("Add file");
     private final Button buttonAddFolder = new Button("Add folder");
     private final Button buttonDoZip     = new Button("Zip");
@@ -55,6 +88,8 @@ public class ZipFX extends Application {
     
     @Override
     public void start(Stage stage) throws Exception {
+        setAllStyles();
+        
         stage.setTitle("ZipFX");
         
         toolBar.getChildren()
@@ -115,8 +150,37 @@ public class ZipFX extends Application {
             .addAll(toolBar,
                     mainUi, 
                     statusBar);
-                    
-        stage.setScene(new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT));
+        
+        
+        stage.initStyle(StageStyle.UNDECORATED);
+        
+        Label title = new Label("ZipFX");
+        title.setStyle("-fx-text-fill: white;");
+        
+        Button buttonClose = new Button("✕");
+        
+        buttonClose.setStyle("""
+                             -fx-background-color: transparent;
+                             -fx-text-fill: white;
+                             """);
+        
+        buttonClose.setOnAction(event -> stage.close());
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        HBox titleBar = new HBox(10, title, spacer, buttonClose);
+        titleBar.setAlignment(Pos.CENTER_LEFT);
+        titleBar.setStyle("""
+                          -fx-background-color: black;
+                          -fx-padding: 5px 10px;
+                          """);
+        
+        BorderPane rootBorderPane = new BorderPane();
+        rootBorderPane.setTop(titleBar);
+        rootBorderPane.setCenter(root);
+        
+        stage.setScene(new Scene(rootBorderPane, WINDOW_WIDTH, WINDOW_HEIGHT));
         stage.show();
     }
     
@@ -276,5 +340,13 @@ public class ZipFX extends Application {
         statusMessageTimer.setDuration(Duration.millis(durationMillis));
         statusMessageTimer.setOnFinished(event -> clearStatusBarText());
         statusMessageTimer.playFromStart();
+    }
+    
+    private void setAllStyles() {
+        buttonAddFile   .setStyle(FXML_ADD_FOLDER_FILE_CSS);
+        buttonAddFolder .setStyle(FXML_ADD_FOLDER_FILE_CSS);
+        buttonDoZip     .setStyle(FXML_ZIP_BUTTON_CSS);
+        
+        toolBar.setStyle("-fx-background-color: black;");
     }
 }
