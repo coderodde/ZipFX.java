@@ -95,6 +95,11 @@ public class ZipFX extends Application {
             FileChooser chooser = new FileChooser();
             chooser.setTitle("Choose the .zip file");
             
+            chooser.getExtensionFilters()
+                   .add(new FileChooser.ExtensionFilter(
+                           "ZIP archives (*.zip)", 
+                           "*.zip"));
+            
             File file = chooser.showSaveDialog(stage);
             
             if (file != null) {
@@ -149,7 +154,7 @@ public class ZipFX extends Application {
         while (iterator.hasNext()) {
             FileListEntry entry = iterator.next();
             
-            if (!fileSet.contains(entry)) {
+            if (!fileSet.contains(entry.file())) {
                 iterator.remove();
             }
         }
