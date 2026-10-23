@@ -32,19 +32,20 @@ import javafx.util.Duration;
 /**
  * This JavaFX application is for zipping files and folders.
  */
-public class ZipFX extends Application {
+public class ZipFXApp extends Application {
     
     private static final PauseTransition statusMessageTimer = 
                      new PauseTransition();
     
     private static final Logger LOGGER = 
-                         Logger.getLogger(ZipFX.class.getSimpleName());
+                         Logger.getLogger(ZipFXApp.class.getSimpleName());
     
     private static final double WINDOW_WIDTH  = 500.0;
     private static final double WINDOW_HEIGHT = 350.0;
     
     private static final long STATUS_MESSAGE_EMPTY_LIST_MILLIS = 3000L;
     private static final long STATUS_MESSAGE_ZIP_IS_SOURCE     = 3000L;
+    private static final long STATUS_MESSAGE_IO_EXCEPTION      = 5000L;
     
     private static final String FXML_ADD_FOLDER_FILE_CSS = 
             """
@@ -138,7 +139,7 @@ public class ZipFX extends Application {
             File file = chooser.showSaveDialog(stage);
             
             if (file != null) {
-                zipAllSelected(stage);
+                zipAllSelected(file, stage);
             }
         });
         
@@ -200,7 +201,7 @@ public class ZipFX extends Application {
         setStatusMessage("Nothing to zip.", STATUS_MESSAGE_EMPTY_LIST_MILLIS);
     }
     
-    private void zipAllSelected(Stage stage) {
+    private void zipAllSelected(File file, Stage stage) {
         if (fileList.isEmpty()) {
             statusBarShowEmptyListMessage();
             return;
@@ -236,7 +237,7 @@ public class ZipFX extends Application {
             
             setStatusBarText("Files to zip: " + count);
             
-//            zipAll(fileList, stage);
+            zipAll(fileList, file, stage);
         });
         
         Thread zippingThread       = new Thread(countTask);
@@ -246,18 +247,11 @@ public class ZipFX extends Application {
         counterUpdateThread.start();
     }
     
-    private void zipAll(FileList fileList, Stage stage) {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Select the target .zip file");
-        
-        File file = chooser.showSaveDialog(stage);
-        
-        if (file != null) {
-            try {
-                zipAllImpl(fileList, file);
-            } catch (IOException ex) {
-                setStatusMessage(ex.getMessage(), STATUS_MESSAGE_EMPTY_LIST_MILLIS);
-            }
+    private void zipAll(FileList fileList, File file, Stage stage) {
+        try {
+            zipAllImpl(fileList, file);
+        } catch (IOException ex) {
+            setStatusMessage(ex.getMessage(), STATUS_MESSAGE_EMPTY_LIST_MILLIS);
         }
     }
     
@@ -268,21 +262,22 @@ public class ZipFX extends Application {
         
         checkFileListContainsNoZipFile(fileList, zipFile);
         
-        ZipOutputStream zos = 
-            new ZipOutputStream(Files.newOutputStream(zipFile.toPath()));
+        try (ZipOutputStream zos = 
+            new ZipOutputStream(Files.newOutputStream(zipFile.toPath()))) {
         
-        for (FileListEntry entry : fileList) {
-            Path path = entry.file().toPath().toAbsolutePath().normalize();
-            
-            if (path.getFileName() == null) {
-                LOGGER.log(Level.WARNING, 
-                           "Filesystem root is requested for zipping.");
+            for (FileListEntry entry : fileList) {
+                Path path = entry.file().toPath().toAbsolutePath().normalize();
+
+                if (path.getFileName() == null) {
+                    LOGGER.log(Level.WARNING, 
+                               "Filesystem root is requested for zipping.");
+                }
+
+                addEntry(zos, 
+                         path, 
+                         path.getFileName().toString(),
+                         target);
             }
-            
-            addEntry(zos, 
-                     path, 
-                     path.getFileName().toString(),
-                     target);
         }
     }
     
@@ -348,5 +343,13 @@ public class ZipFX extends Application {
         buttonDoZip     .setStyle(FXML_ZIP_BUTTON_CSS);
         
         toolBar.setStyle("-fx-background-color: black;");
+    }
+    
+    private static String wordFiles(int numberOfFiles) {
+        return numberOfFiles == 1 ? "file" : "files";
+    }
+    
+    private static String wordDirectories(int numberOfDirectories) {
+        return numberOfDirectories == 1 ? "directory" : "directories";
     }
 }

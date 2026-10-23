@@ -12,12 +12,12 @@ public final class FileCountUpdateTask extends Task<Void> {
 
     private static final long COUNT_UPDATE_SLEEP = 100L;
     
-    private final ZipFX app;
+    private final ZipFXApp app;
     private final FileCounter fileCounter;
     
     private volatile boolean requestHalt = false;
     
-    public FileCountUpdateTask(ZipFX app, FileCounter fileCounter) {
+    public FileCountUpdateTask(ZipFXApp app, FileCounter fileCounter) {
         this.app = Objects.requireNonNull(app, "The input app object is null.");
         
         this.fileCounter = 
