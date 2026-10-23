@@ -2,6 +2,7 @@ package io.github.coderodde.zipfx;
 
 import java.io.File;
 import java.io.IOException;
+import static java.lang.Math.clamp;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -15,9 +16,12 @@ import java.util.zip.ZipOutputStream;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -86,6 +90,9 @@ public class ZipFXApp extends Application {
     private final HBox statusBar         = new HBox();
     
     private final FileList fileList = new FileList();
+    
+    private double dragOffsetX;
+    private double dragOffsetY;
     
     @Override
     public void start(Stage stage) throws Exception {
@@ -171,6 +178,21 @@ public class ZipFXApp extends Application {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         
         HBox titleBar = new HBox(10, title, spacer, buttonClose);
+        
+        titleBar.setOnMousePressed(event -> {
+            if (event.getButton() == MouseButton.PRIMARY) {
+                dragOffsetX = event.getScreenX() - stage.getX();
+                dragOffsetY = event.getScreenY() - stage.getY();
+            }
+        });
+        
+        titleBar.setOnMouseDragged(event -> {
+            if (event.isPrimaryButtonDown()) {
+                stage.setX(event.getScreenX() - dragOffsetX);
+                stage.setY(event.getScreenY() - dragOffsetY);
+            }
+        });
+        
         titleBar.setAlignment(Pos.CENTER_LEFT);
         titleBar.setStyle("""
                           -fx-background-color: black;
@@ -181,7 +203,19 @@ public class ZipFXApp extends Application {
         rootBorderPane.setTop(titleBar);
         rootBorderPane.setCenter(root);
         
-        stage.setScene(new Scene(rootBorderPane, WINDOW_WIDTH, WINDOW_HEIGHT));
+        stage.setResizable(true);
+        stage.setMinWidth (WINDOW_WIDTH);
+        stage.setMinHeight(WINDOW_HEIGHT);
+        
+        Scene scene = new Scene(rootBorderPane, WINDOW_WIDTH, WINDOW_HEIGHT);
+        
+        stage.setScene(scene);
+        
+        new WindowResizeHandler(stage, scene);
+        
+        VBox.setVgrow(mainUi, Priority.ALWAYS);
+        fileList.setMaxHeight(Double.MAX_VALUE);
+        
         stage.show();
     }
     
@@ -351,5 +385,156 @@ public class ZipFXApp extends Application {
     
     private static String wordDirectories(int numberOfDirectories) {
         return numberOfDirectories == 1 ? "directory" : "directories";
+    }
+    
+    private static final class WindowResizeHandler {
+        private static final double BORDER = 6.0;
+        
+        private static final int LEFT   = 1;
+        private static final int RIGHT  = 2;
+        private static final int TOP    = 4;
+        private static final int BOTTOM = 8;
+        
+        private final Stage stage;
+        private final Scene scene;
+        
+        private int edges;
+        private double startMouseX;
+        private double startMouseY;
+        private double startX;
+        private double startY;
+        private double startWidth;
+        private double startHeight;
+        
+        WindowResizeHandler(Stage stage, Scene scene) {
+            this.stage = stage;
+            this.scene = scene;
+            
+            scene.addEventFilter(MouseEvent.MOUSE_MOVED, event -> {
+                if (edges == 0) {
+                    scene.setCursor(cursorFor(edgesAt(event)));
+                }
+            });
+            
+            scene.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+                if (event.getButton() != MouseButton.PRIMARY) {
+                    return;
+                }
+                
+                edges = edgesAt(event);
+                
+                if (edges == 0) {
+                    return;
+                }
+                
+                startMouseX = event.getScreenX();
+                startMouseY = event.getScreenY();
+                startX      = stage.getX();
+                startY      = stage.getY();
+                startWidth  = stage.getWidth();
+                startHeight = stage.getHeight();
+                
+                scene.setCursor(cursorFor(edges));
+                event.consume();
+            });
+            
+            scene.addEventFilter(MouseEvent.MOUSE_DRAGGED, event -> {
+                if (edges == 0 || !event.isPrimaryButtonDown()) {
+                    return;
+                }
+                
+                double dx = event.getScreenX() - startMouseX;
+                double dy = event.getScreenY() - startMouseY;
+                
+                if ((edges & LEFT) != 0) {
+                    double width = clamp(startWidth - dx,
+                                         stage.getMinWidth(),
+                                         stage.getMaxWidth());
+                    
+                    stage.setWidth(width);
+                    stage.setX(startX + startWidth - width);
+                } else if ((edges & RIGHT) != 0) {
+                    stage.setWidth(clamp(startWidth + dx,
+                                         stage.getMinWidth(),
+                                         stage.getMaxWidth()));
+                }
+                
+                if ((edges & TOP) != 0) {
+                    double height = clamp(startHeight - dy,
+                                          stage.getMinHeight(),
+                                          stage.getMaxHeight());
+                    
+                    stage.setHeight(height);
+                    stage.setY(startY + startHeight - height);
+                } else if ((edges & BOTTOM) != 0) {
+                    stage.setHeight(clamp(startHeight + dy,
+                                          stage.getMinHeight(),
+                                          stage.getMaxHeight()));
+                }
+                
+                event.consume();
+            });
+                
+            scene.addEventFilter(MouseEvent.MOUSE_RELEASED, event -> {
+                if (edges != 0 && event.getButton() == MouseButton.PRIMARY) {
+                    edges = 0;
+                    scene.setCursor(cursorFor(edgesAt(event)));
+                    event.consume();
+                }
+            });
+            
+            scene.addEventFilter(MouseEvent.MOUSE_EXITED, event -> {
+                if (edges == 0) {
+                    scene.setCursor(Cursor.DEFAULT);
+                }
+            });
+        }
+        
+        private int edgesAt(MouseEvent event) {
+            if (!stage.isResizable()
+                    || stage.isMaximized()
+                    || stage.isFullScreen()) {
+                return 0;
+            }
+            
+            double x = event.getSceneX();
+            double y = event.getSceneY();
+            
+            if (x < 0 || y < 0 
+                      || x > scene.getWidth()
+                      || y > scene.getHeight()) {
+                return 0;
+            }
+            
+            int result = 0;
+            
+            if (x <= BORDER) {
+                result |= LEFT;
+            } else if (x >= scene.getWidth() - BORDER) {
+                result |= RIGHT;
+            }
+            
+            if (y <= BORDER) {
+                result |= TOP;
+            } else if (y >= scene.getHeight() - BORDER) {
+                result |= BOTTOM;
+            }
+            
+            return result;
+        }
+        
+        private static Cursor cursorFor(int edges) {
+            return switch (edges) {
+                case LEFT           -> Cursor.W_RESIZE;
+                case RIGHT          -> Cursor.E_RESIZE;
+                case TOP            -> Cursor.N_RESIZE;
+                case BOTTOM         -> Cursor.S_RESIZE;
+                case LEFT | TOP     -> Cursor.NW_RESIZE;
+                case RIGHT | TOP    -> Cursor.NE_RESIZE;
+                case LEFT | BOTTOM  -> Cursor.SW_RESIZE;
+                case RIGHT | BOTTOM -> Cursor.SE_RESIZE;
+                default -> Cursor.DEFAULT;
+            };
+        }
     }
 }
