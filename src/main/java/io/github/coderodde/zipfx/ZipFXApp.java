@@ -44,6 +44,9 @@ public class ZipFXApp extends Application {
     private static final Logger LOGGER = 
                          Logger.getLogger(ZipFXApp.class.getSimpleName());
     
+    private static final double TITLE_BAR_BUTTON_WIDTH  = 40.0;
+    private static final double TITLE_BAR_BUTTON_HEIGHT = 40.0;
+    
     private static final double WINDOW_WIDTH  = 500.0;
     private static final double WINDOW_HEIGHT = 350.0;
     
@@ -64,6 +67,19 @@ public class ZipFXApp extends Application {
             -fx-pref-width: 100px;
             -fx-max-width: 100px;
             """;
+    
+    private static final String FXML_ADD_FOLDER_FILE_CSS_ON_HOVER = 
+            """
+            -fx-border-width: 1 0 1 1;
+            -fx-border-style: solid; 
+            -fx-background-color: #666; 
+            -fx-text-fill: black;
+            -fx-font-family: "sans-serfi";
+            -fx-font-size: 12px;
+            -fx-min-width: 100px;
+            -fx-pref-width: 100px;
+            -fx-max-width: 100px;
+            """;
 
     private static final String FXML_ZIP_BUTTON_CSS = 
             """
@@ -78,11 +94,65 @@ public class ZipFXApp extends Application {
             -fx-pref-width: 100px;
             -fx-max-width: 100px;
             """;
-            
+
+    private static final String FXML_ZIP_BUTTON_CSS_ON_HOVER = 
+            """ 
+            -fx-border-width: 1px;
+            -fx-border-style: solid; 
+            -fx-background-color: white; 
+            -fx-text-fill: #666;
+            -fx-font-family: "sans-serfi";
+            -fx-font-size: 12px;
+            -fx-min-width: 100px;
+            -fx-pref-width: 100px;
+            -fx-max-width: 100px;
+            """;
+    
+    private static final String FXML_CLOSE_BUTTON_CSS_ON_HOVER = 
+            """
+            -fx-background-color: #c71e2f;
+            -fx-background-radius: 0;
+            -fx-border-insets: 0;
+            -fx-border-width: 0;
+            -fx-border-color: transparent;
+            -fx-border-radius: 0;
+            -fx-text-fill: white;
+            """;
+    
+    private static final String FXML_CLOSE_BUTTON_CSS = 
+            """
+            -fx-background-color: transparent;
+            -fx-text-fill: white;
+            """;
+    
+    private static final String FXML_TITLE_BAR_BUTTON_CSS = 
+            """
+            -fx-background-color: black;
+            -fx-background-radius: 0;
+            -fx-background-insets: 0;
+            -fx-border-width: 0;
+            -fx-border-color: transparent;
+            -fx-border-radius: 0;
+            -fx-text-fill: white;
+            """;
+    
+    private static final String FXML_TITLE_BAR_BUTTON_CSS_ON_HOVER = 
+            """
+            -fx-background-color: white;
+            -fx-background-radius: 0;
+            -fx-background-insets: 0;
+            -fx-border-width: 0;
+            -fx-border-color: transparent;
+            -fx-border-radius: 0;
+            -fx-text-fill: black;
+            """;
     
     private final Button buttonAddFile   = new Button("Add file");
     private final Button buttonAddFolder = new Button("Add folder");
     private final Button buttonDoZip     = new Button("Zip");
+    private final Button buttonClose     = new Button("✕");
+    private final Button buttonMinimize  = new Button("─");
+    private final Button buttonMaximize  = new Button("□");
     private final Label labelStatusText  = new Label();
     private final VBox root              = new VBox();
     private final HBox toolBar           = new HBox();
@@ -165,19 +235,65 @@ public class ZipFXApp extends Application {
         Label title = new Label("ZipFX");
         title.setStyle("-fx-text-fill: white;");
         
-        Button buttonClose = new Button("✕");
-        
         buttonClose.setStyle("""
                              -fx-background-color: transparent;
                              -fx-text-fill: white;
                              """);
         
         buttonClose.setOnAction(event -> stage.close());
+        buttonClose.setOnMouseEntered(
+            event -> buttonClose.setStyle(FXML_CLOSE_BUTTON_CSS_ON_HOVER)
+        );
+        
+        buttonClose.setOnMouseExited(
+            event -> buttonClose.setStyle(FXML_CLOSE_BUTTON_CSS)
+        );
+        
+        buttonMinimize.setOnAction(event -> stage.setIconified(true));
+        buttonMaximize.setOnAction(event -> {
+            stage.setMaximized(!stage.isMaximized());
+        });
+        
+        stage.maximizedProperty().addListener((observable, 
+                                               oldValue, 
+                                               maximized) -> 
+            buttonMaximize.setText(maximized ? "❐" : "□")
+        );
+        
+        for (Button button : new Button[] { buttonMinimize, buttonMaximize }) {
+            button.setStyle(FXML_TITLE_BAR_BUTTON_CSS);
+            
+            button.setOnMouseEntered(event -> {
+                button.setStyle(FXML_TITLE_BAR_BUTTON_CSS_ON_HOVER);
+            });
+            
+            button.setOnMouseExited(event -> {
+                button.setStyle(FXML_TITLE_BAR_BUTTON_CSS);
+            });
+        }
+        
+        for (Button button : new Button[] { buttonMinimize,
+                                            buttonMaximize,
+                                            buttonClose}) {
+            
+            button.setMinWidth (TITLE_BAR_BUTTON_WIDTH);
+            button.setPrefWidth(TITLE_BAR_BUTTON_WIDTH);
+            button.setMaxWidth (TITLE_BAR_BUTTON_WIDTH);
+            
+            button.setMinHeight (TITLE_BAR_BUTTON_HEIGHT);
+            button.setPrefHeight(TITLE_BAR_BUTTON_HEIGHT);
+            button.setMaxHeight (TITLE_BAR_BUTTON_HEIGHT);
+        }
         
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         
-        HBox titleBar = new HBox(10, title, spacer, buttonClose);
+        HBox titleBar = new HBox(0, 
+                                 title, 
+                                 spacer,
+                                 buttonMinimize,
+                                 buttonMaximize,
+                                 buttonClose);
         
         titleBar.setOnMousePressed(event -> {
             if (event.getButton() == MouseButton.PRIMARY) {
@@ -529,10 +645,11 @@ public class ZipFXApp extends Application {
                 case RIGHT          -> Cursor.E_RESIZE;
                 case TOP            -> Cursor.N_RESIZE;
                 case BOTTOM         -> Cursor.S_RESIZE;
-                case LEFT | TOP     -> Cursor.NW_RESIZE;
+                case LEFT  | TOP    -> Cursor.NW_RESIZE;
                 case RIGHT | TOP    -> Cursor.NE_RESIZE;
-                case LEFT | BOTTOM  -> Cursor.SW_RESIZE;
+                case LEFT  | BOTTOM -> Cursor.SW_RESIZE;
                 case RIGHT | BOTTOM -> Cursor.SE_RESIZE;
+                    
                 default -> Cursor.DEFAULT;
             };
         }
