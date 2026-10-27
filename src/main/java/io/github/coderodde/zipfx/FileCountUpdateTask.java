@@ -13,15 +13,16 @@ public final class FileCountUpdateTask extends Task<Void> {
     private static final long COUNT_UPDATE_SLEEP = 100L;
     
     private final ZipFXApp app;
-    private final FileCounter fileCounter;
+    private final FileDataCounter fileDataCounter;
     
     private volatile boolean requestHalt = false;
     
-    public FileCountUpdateTask(ZipFXApp app, FileCounter fileCounter) {
+    public FileCountUpdateTask(ZipFXApp app, FileDataCounter fileCounter) {
         this.app = Objects.requireNonNull(app, "The input app object is null.");
         
-        this.fileCounter = 
-            Objects.requireNonNull(fileCounter, "The file counter is null.");
+        this.fileDataCounter = 
+            Objects.requireNonNull(fileCounter, 
+                                   "The file data counter is null.");
     }
     
     public void halt() {
@@ -36,11 +37,37 @@ public final class FileCountUpdateTask extends Task<Void> {
             }
             
             Platform.runLater(() -> {
+                long files       = fileDataCounter.getFileCount();
+                long directories = fileDataCounter.getDirectoryCount();
+                long bytes       = fileDataCounter.getByteCount();
+                
+                String strFile      = wordFiles(files);
+                String strDirectory = wordDirectories(directories);
+                String strBytes     = wordBytes(bytes);
+                
                 app.setStatusBarText(
-                    "Files counted: %d".formatted(fileCounter.getCount()));
+                    "Counted %d %s in %d %s worth %d %s."
+                        .formatted(files, 
+                                   strFile, 
+                                   directories, 
+                                   strDirectory, 
+                                   bytes, 
+                                   strBytes));
             });
             
             Misc.sleep(COUNT_UPDATE_SLEEP);
         }
+    }
+    
+    private static String wordFiles(long numFiles) {
+        return numFiles == 1 ? "file" : "files";
+    }
+    
+    private static String wordDirectories(long numDirectories) {
+        return numDirectories == 1 ? "folder" : "folders";
+    }
+    
+    private static String wordBytes(long numBytes) {
+        return numBytes == 1 ? "byte" : "bytes";
     }
 }

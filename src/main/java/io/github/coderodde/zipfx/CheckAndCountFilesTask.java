@@ -13,9 +13,9 @@ import javafx.concurrent.Task;
 public final class CheckAndCountFilesTask extends Task<Long> {
 
     private final FileList fileList;
-    private final FileCounter counter;
+    private final FileDataCounter counter;
     
-    public CheckAndCountFilesTask(FileList fileList, FileCounter counter) {
+    public CheckAndCountFilesTask(FileList fileList, FileDataCounter counter) {
         this.fileList =
             Objects.requireNonNull(fileList, "The input entry list is null.");
     
@@ -29,7 +29,7 @@ public final class CheckAndCountFilesTask extends Task<Long> {
             processEntry(entry);
         }
         
-        return counter.getCount();
+        return null;
     }
     
     private void processEntry(FileListEntry entry) {
@@ -39,27 +39,21 @@ public final class CheckAndCountFilesTask extends Task<Long> {
     private void processEntryImpl(File file, FileListEntry entry) {
         if (Files.isSymbolicLink(file.toPath())) {
             if (file.isFile()) {
-                throw new FileIsSymbolicLinkException(
-                    file,
-                    entry,
-                    "File \"%s\" is a symbolic link."
-                            .formatted(file.getAbsoluteFile().getName()));
-                
+                throw new FileSymbolicLinkException(file, entry);
             } else if (file.isDirectory()) {
-                throw new FileIsSymbolicLinkException(
-                    file,
-                    entry,
-                    "Directory \"%s\" is a symbolic link."
-                            .formatted(file.getAbsoluteFile().getName()));
+                throw new DirectorySymbolicLinkException(file, entry);
             } else {
                 throw new IllegalStateException("Unknown state.");
             }
         }
         
         if (file.isFile()) {
-            counter.increase();
+            counter.increaseFileCounter();
+            counter.addByteCounter(file.length());
             return;
         }
+        
+        counter.increaseDirectoryCounter();
         
         File[] children = file.listFiles();
         

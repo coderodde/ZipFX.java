@@ -374,7 +374,7 @@ public class ZipFXApp extends Application {
             }
         }
         
-        FileCounter fileCounter = new FileCounter();
+        FileDataCounter fileCounter = new FileDataCounter();
         
         CheckAndCountFilesTask countTask = 
             new CheckAndCountFilesTask(fileList, fileCounter);
@@ -384,8 +384,6 @@ public class ZipFXApp extends Application {
         
         countTask.setOnSucceeded(event -> {
             long count = countTask.getValue();
-            
-            setStatusBarText("Files to zip: " + count);
             
             zipAll(fileList, file, stage);
         });
