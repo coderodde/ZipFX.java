@@ -383,7 +383,7 @@ public class ZipFXApp extends Application {
             new FileCountUpdateTask(this, fileCounter);
         
         countTask.setOnSucceeded(event -> {
-            long count = countTask.getValue();
+            countTask.getValue();
             
             zipAll(fileList, file, stage);
         });

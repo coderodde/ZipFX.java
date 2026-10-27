@@ -10,7 +10,7 @@ import javafx.concurrent.Task;
  * involved <b>and</b> validating that each reachable file/folder is <b>not</b>
  * a symbolic link.
  */
-public final class CheckAndCountFilesTask extends Task<Long> {
+public final class CheckAndCountFilesTask extends Task<Void> {
 
     private final FileList fileList;
     private final FileDataCounter counter;
@@ -24,7 +24,7 @@ public final class CheckAndCountFilesTask extends Task<Long> {
     }
     
     @Override
-    protected Long call() throws Exception {
+    protected Void call() throws Exception {
         for (FileListEntry entry : fileList) {
             processEntry(entry);
         }
