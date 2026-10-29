@@ -55,23 +55,6 @@ public class ZipFXApp extends Application {
     private static final long STATUS_MESSAGE_IO_EXCEPTION      = 5000L;
     
     
-    private static final String FXML_CLOSE_BUTTON_CSS_ON_HOVER = 
-            """
-            -fx-background-color: #c71e2f;
-            -fx-background-radius: 0;
-            -fx-border-insets: 0;
-            -fx-border-width: 0;
-            -fx-border-color: transparent;
-            -fx-border-radius: 0;
-            -fx-text-fill: white;
-            """;
-    
-    private static final String FXML_CLOSE_BUTTON_CSS = 
-            """
-            -fx-background-color: transparent;
-            -fx-text-fill: white;
-            """;
-    
     private static final String FXML_TITLE_BAR_BUTTON_CSS = 
             """
             -fx-background-color: black;
@@ -181,20 +164,8 @@ public class ZipFXApp extends Application {
         
         Label title = new Label("ZipFX");
         title.setStyle("-fx-text-fill: white;");
-        
-        buttonClose.setStyle("""
-                             -fx-background-color: transparent;
-                             -fx-text-fill: white;
-                             """);
-        
         buttonClose.setOnAction(event -> stage.close());
-        buttonClose.setOnMouseEntered(
-            event -> buttonClose.setStyle(FXML_CLOSE_BUTTON_CSS_ON_HOVER)
-        );
         
-        buttonClose.setOnMouseExited(
-            event -> buttonClose.setStyle(FXML_CLOSE_BUTTON_CSS)
-        );
         
         buttonMinimize.setOnAction(event -> stage.setIconified(true));
         buttonMaximize.setOnAction(event -> {
@@ -433,6 +404,19 @@ public class ZipFXApp extends Application {
     }
     
     private void setAllStyles() {
+        
+        // Stylize the "Close window" button:
+        buttonClose.setStyle(FXML.TitleBar.CloseButton.CSS_DEFAULT);
+        
+        buttonClose.setOnMouseEntered(
+            event -> 
+                buttonClose.setStyle(FXML.TitleBar.CloseButton.CSS_ON_HOVER)
+        );
+        
+        buttonClose.setOnMouseExited(
+            event -> buttonClose.setStyle(FXML.TitleBar.CloseButton.CSS_DEFAULT)
+        );
+        
         // Stylize the "Add Folder" button:
         buttonAddFolder.setStyle(FXML.Buttons.AddFolderButton.CSS_DEFAULT);
         

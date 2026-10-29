@@ -6,6 +6,37 @@ package io.github.coderodde.zipfx;
 public final class FXML {
 
     private FXML() {}
+    
+    public static final class TitleBar {
+        
+        public static final class MinimizeButton {
+            
+        }
+        
+        public static final class MaximizeButton {
+            
+        }
+        
+        public static final class CloseButton {
+            
+            public static final String CSS_DEFAULT = 
+                """
+                -fx-background-color: transparent;
+                -fx-text-fill: white;
+                """;
+            
+            public static final String CSS_ON_HOVER = 
+                """
+                -fx-background-color: #c71e2f;
+                -fx-background-radius: 0;
+                -fx-border-insets: 0;
+                -fx-border-width: 0;
+                -fx-border-color: transparent;
+                -fx-border-radius: 0;
+                -fx-text-fill: white;
+                """;
+        }
+    }
 
     public static final class Buttons {
 
