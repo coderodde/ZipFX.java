@@ -54,59 +54,6 @@ public class ZipFXApp extends Application {
     private static final long STATUS_MESSAGE_ZIP_IS_SOURCE     = 3000L;
     private static final long STATUS_MESSAGE_IO_EXCEPTION      = 5000L;
     
-    private static final String FXML_ADD_FOLDER_FILE_CSS = 
-            """
-            -fx-border-color: #666; 
-            -fx-border-width: 1 0 1 1;
-            -fx-border-style: solid; 
-            -fx-background-color: black; 
-            -fx-text-fill: white;
-            -fx-font-family: "sans-serfi";
-            -fx-font-size: 12px;
-            -fx-min-width: 100px;
-            -fx-pref-width: 100px;
-            -fx-max-width: 100px;
-            """;
-    
-    private static final String FXML_ADD_FOLDER_FILE_CSS_ON_HOVER = 
-            """
-            -fx-border-width: 1 0 1 1;
-            -fx-border-style: solid; 
-            -fx-background-color: #666; 
-            -fx-text-fill: black;
-            -fx-font-family: "sans-serfi";
-            -fx-font-size: 12px;
-            -fx-min-width: 100px;
-            -fx-pref-width: 100px;
-            -fx-max-width: 100px;
-            """;
-
-    private static final String FXML_ZIP_BUTTON_CSS = 
-            """
-            -fx-border-color: #666; 
-            -fx-border-width: 1px;
-            -fx-border-style: solid; 
-            -fx-background-color: black; 
-            -fx-text-fill: white;
-            -fx-font-family: "sans-serfi";
-            -fx-font-size: 12px;
-            -fx-min-width: 100px;
-            -fx-pref-width: 100px;
-            -fx-max-width: 100px;
-            """;
-
-    private static final String FXML_ZIP_BUTTON_CSS_ON_HOVER = 
-            """ 
-            -fx-border-width: 1px;
-            -fx-border-style: solid; 
-            -fx-background-color: white; 
-            -fx-text-fill: #666;
-            -fx-font-family: "sans-serfi";
-            -fx-font-size: 12px;
-            -fx-min-width: 100px;
-            -fx-pref-width: 100px;
-            -fx-max-width: 100px;
-            """;
     
     private static final String FXML_CLOSE_BUTTON_CSS_ON_HOVER = 
             """
@@ -486,9 +433,38 @@ public class ZipFXApp extends Application {
     }
     
     private void setAllStyles() {
-        buttonAddFile   .setStyle(FXML_ADD_FOLDER_FILE_CSS);
-        buttonAddFolder .setStyle(FXML_ADD_FOLDER_FILE_CSS);
-        buttonDoZip     .setStyle(FXML_ZIP_BUTTON_CSS);
+        // Stylize the "Add Folder" button:
+        buttonAddFolder.setStyle(FXML.Buttons.AddFolderButton.CSS_DEFAULT);
+        
+        buttonAddFolder.setOnMouseEntered(event ->
+            buttonAddFolder.setStyle(FXML.Buttons.AddFolderButton.CSS_ON_HOVER)
+        );
+        
+        buttonAddFolder.setOnMouseExited(event -> 
+            buttonAddFolder.setStyle(FXML.Buttons.AddFolderButton.CSS_DEFAULT)
+        );
+        
+        // Stylize the "Add File" button:
+        buttonAddFile.setStyle(FXML.Buttons.AddFileButton.CSS_DEFAULT);
+        
+        buttonAddFile.setOnMouseEntered(event ->
+            buttonAddFile.setStyle(FXML.Buttons.AddFileButton.CSS_ON_HOVER)
+        );
+        
+        buttonAddFile.setOnMouseExited(event -> 
+            buttonAddFile.setStyle(FXML.Buttons.AddFileButton.CSS_DEFAULT)
+        );
+        
+        // Stylize the "Zip" button:
+        buttonDoZip.setStyle(FXML.Buttons.ZipButton.CSS_DEFAULT);
+        
+        buttonDoZip.setOnMouseEntered(event ->
+            buttonDoZip.setStyle(FXML.Buttons.ZipButton.CSS_ON_HOVER)
+        );
+        
+        buttonDoZip.setOnMouseExited(event -> 
+            buttonDoZip.setStyle(FXML.Buttons.ZipButton.CSS_DEFAULT)
+        );
         
         toolBar.setStyle("-fx-background-color: black;");
     }
