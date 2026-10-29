@@ -5,8 +5,7 @@ package io.github.coderodde.zipfx;
  */
 public final class FXML {
 
-    private FXML() {
-    }
+    private FXML() {}
 
     public static final class Buttons {
 
@@ -20,24 +19,32 @@ public final class FXML {
                 -fx-background-color: black; 
                 -fx-text-fill: white;
                 -fx-font-family: "sans-serif";
-                -fx-font-size: 12px;
-                -fx-min-width: 100px;
+                -fx-font-weight: normal;
+                -fx-font-size:   12px;
+                -fx-min-width:  100px;
                 -fx-pref-width: 100px;
-                -fx-max-width: 100px;
+                -fx-max-width:  100px;
+                -fx-min-height:  30px;
+                -fx-pref-height: 30px;
+                -fx-max-height:  30px;
                 """;
 
             public static final String CSS_ON_HOVER = 
                 """
+                -fx-border-color: #666;
                 -fx-border-width: 1 0 1 1;
                 -fx-border-style: solid; 
                 -fx-background-color: #666; 
                 -fx-text-fill: white;
-                -fx-font-weight: bold;
-                -fx-font-family: "sans-serfi";
-                -fx-font-size: 12px;
-                -fx-min-width: 100px;
+                -fx-font-family: "sans-serif";
+                -fx-font-weight: normal;
+                -fx-font-size:   12px;
+                -fx-min-width:  100px;
                 -fx-pref-width: 100px;
-                -fx-max-width: 100px;
+                -fx-max-width:  100px;
+                -fx-min-height:  30px;
+                -fx-pref-height: 30px;
+                -fx-max-height:  30px;
                 """;
         }
 
@@ -51,24 +58,32 @@ public final class FXML {
                 -fx-background-color: black; 
                 -fx-text-fill: white;
                 -fx-font-family: "sans-serif";
-                -fx-font-size: 12px;
-                -fx-min-width: 100px;
+                -fx-font-weight: normal;
+                -fx-font-size:   12px;
+                -fx-min-width:  100px;
                 -fx-pref-width: 100px;
-                -fx-max-width: 100px;
+                -fx-max-width:  100px;
+                -fx-min-height:  30px;
+                -fx-pref-height: 30px;
+                -fx-max-height:  30px;
                 """;
 
             public static final String CSS_ON_HOVER = 
                 """
+                -fx-border-color: #666;
                 -fx-border-width: 1 0 1 1;
                 -fx-border-style: solid; 
                 -fx-background-color: #666; 
                 -fx-text-fill: white;
-                -fx-font-weight: bold;
-                -fx-font-family: "sans-serfi";
-                -fx-font-size: 12px;
-                -fx-min-width: 100px;
+                -fx-font-weight: normal;
+                -fx-font-family: "sans-serif";
+                -fx-font-size:   12px;
+                -fx-min-width:  100px;
                 -fx-pref-width: 100px;
-                -fx-max-width: 100px;
+                -fx-max-width:  100px;
+                -fx-min-height:  30px;
+                -fx-pref-height: 30px;
+                -fx-max-height:  30px;
                 """;
         }
 
@@ -77,29 +92,38 @@ public final class FXML {
             public static final String CSS_DEFAULT = 
                 """
                 -fx-border-color: #666; 
-                -fx-border-width: 1 0 1 1;
+                -fx-border-width: 1px;
                 -fx-border-style: solid; 
                 -fx-background-color: black; 
                 -fx-text-fill: white;
                 -fx-font-family: "sans-serif";
-                -fx-font-size: 12px;
-                -fx-min-width: 100px;
+                -fx-font-weight: normal;
+                -fx-font-size:   12px;
+                -fx-min-width:  100px;
                 -fx-pref-width: 100px;
-                -fx-max-width: 100px;
+                -fx-max-width:  100px;
+                -fx-min-height:  30px;
+                -fx-pref-height: 30px;
+                -fx-max-height:  30px;
                 """;
 
             public static final String CSS_ON_HOVER = 
                 """
-                -fx-border-width: 1 0 1 1;
+                -fx-border-color: #666;
+                -fx-border-width: 1px;
                 -fx-border-style: solid; 
                 -fx-background-color: #666; 
                 -fx-text-fill: white;
                 -fx-font-weight: bold;
-                -fx-font-family: "sans-serfi";
-                -fx-font-size: 12px;
-                -fx-min-width: 100px;
+                -fx-font-family: "sans-serif";
+                -fx-font-weight: normal;
+                -fx-font-size:   12px;
+                -fx-min-width:  100px;
                 -fx-pref-width: 100px;
-                -fx-max-width: 100px;
+                -fx-max-width:  100px;
+                -fx-min-height:  30px;
+                -fx-pref-height: 30px;
+                -fx-max-height:  30px;
                 """;
         }
     }
