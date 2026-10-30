@@ -21,6 +21,7 @@ public class ZipTask extends Task<Void> {
 
     private final FileDataCounter totalFileDataCounter;
     private final FileDataCounter progressFileDataCounter;
+    private final FileZipCountUpdateTask zipCountUpdateTask;
     private final FileList fileList;
     private final File zipOutputFile;
     private final ZipFXApp app;
@@ -28,6 +29,7 @@ public class ZipTask extends Task<Void> {
     
     public ZipTask(FileDataCounter totalFileDataCounter,
                    FileDataCounter progressFileDataCounter,
+                   FileZipCountUpdateTask zipCountUpdateTask,
                    FileList fileList,
                    File zipOutputFile,
                    ZipFXApp app) {
@@ -41,6 +43,11 @@ public class ZipTask extends Task<Void> {
             Objects.requireNonNull(
                 progressFileDataCounter, 
                 "The input progress file data counter is null.");
+        
+        this.zipCountUpdateTask =
+            Objects.requireNonNull(
+                zipCountUpdateTask, 
+                "The input zip count update task is null.");
         
         this.fileList =
             Objects.requireNonNull(fileList, "The file list is null.");
@@ -149,6 +156,9 @@ public class ZipTask extends Task<Void> {
             zos.closeEntry();
             
             long fileDuration = System.nanoTime() - ta;
+            
+            zipCountUpdateTask.addFileZippingDuration(fileDuration);
+            
             long fileLength   = path.toFile().length();
             
             currentCompressedBytes += fileLength;
