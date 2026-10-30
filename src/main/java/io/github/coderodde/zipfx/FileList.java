@@ -33,4 +33,8 @@ public final class FileList extends ListView<FileListEntry>
     public Iterator<FileListEntry> iterator() {
         return getItems().iterator();
     }
+    
+    public FileListEntry[] toArray() {
+        return getItems().toArray(FileListEntry[]::new);
+    }
 }

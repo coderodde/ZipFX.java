@@ -19,4 +19,16 @@ public final class Misc {
             LOGGER.log(Level.WARNING, "Could not sleep: {0}", ex.getMessage());
         }
     }
+    
+    public static String wordFiles(long numFiles) {
+        return numFiles == 1L ? "file" : "files";
+    }
+    
+    public static String wordDirectories(long numDirectories) {
+        return numDirectories == 1L ? "folder" : "folders";
+    }
+    
+    public static String wordBytes(long numBytes) {
+        return numBytes == 1L ? "byte" : "bytes";
+    }
 }

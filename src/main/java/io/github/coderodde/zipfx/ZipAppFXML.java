@@ -3,9 +3,9 @@ package io.github.coderodde.zipfx;
 /**
  * This class contains all the FXML specifications.
  */
-public final class FXML {
+public final class ZipAppFXML {
 
-    private FXML() {}
+    private ZipAppFXML() {}
     
     public static final class TitleBar {
         

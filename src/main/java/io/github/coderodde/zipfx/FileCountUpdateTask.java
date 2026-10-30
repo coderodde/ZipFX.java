@@ -1,12 +1,15 @@
 package io.github.coderodde.zipfx;
 
+import static io.github.coderodde.zipfx.Misc.sleep;
+import static io.github.coderodde.zipfx.Misc.wordBytes;
+import static io.github.coderodde.zipfx.Misc.wordDirectories;
+import static io.github.coderodde.zipfx.Misc.wordFiles;
 import java.util.Objects;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 
 /**
  *
- * @author rodio
  */
 public final class FileCountUpdateTask extends Task<Void> {
 
@@ -45,7 +48,7 @@ public final class FileCountUpdateTask extends Task<Void> {
                 String strDirectory = wordDirectories(directories);
                 String strBytes     = wordBytes(bytes);
                 
-                app.setStatusBarText(
+                app.setFileStatusBarText(
                     "Counted %d %s in %d %s worth %d %s."
                         .formatted(files, 
                                    strFile, 
@@ -55,19 +58,7 @@ public final class FileCountUpdateTask extends Task<Void> {
                                    strBytes));
             });
             
-            Misc.sleep(COUNT_UPDATE_SLEEP);
+            sleep(COUNT_UPDATE_SLEEP);
         }
-    }
-    
-    private static String wordFiles(long numFiles) {
-        return numFiles == 1 ? "file" : "files";
-    }
-    
-    private static String wordDirectories(long numDirectories) {
-        return numDirectories == 1 ? "folder" : "folders";
-    }
-    
-    private static String wordBytes(long numBytes) {
-        return numBytes == 1 ? "byte" : "bytes";
     }
 }

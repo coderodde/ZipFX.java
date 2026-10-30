@@ -31,4 +31,15 @@ public final class FileListEntry extends HBox {
     public File file() {
         return file;
     }
+    
+    @Override
+    public int hashCode() {
+        return file.hashCode();
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof FileListEntry other 
+            && Objects.equals(file, other.file);
+    }
 }

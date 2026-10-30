@@ -54,6 +54,8 @@ public class ZipFXApp extends Application {
     private static final long STATUS_MESSAGE_ZIP_IS_SOURCE     = 3000L;
     private static final long STATUS_MESSAGE_IO_EXCEPTION      = 5000L;
     
+    private static final String VERSION = "1.0.0";
+    
     
     private static final String FXML_TITLE_BAR_BUTTON_CSS = 
             """
@@ -77,17 +79,18 @@ public class ZipFXApp extends Application {
             -fx-text-fill: black;
             """;
     
-    private final Button buttonAddFile   = new Button("Add file");
-    private final Button buttonAddFolder = new Button("Add folder");
-    private final Button buttonDoZip     = new Button("Zip");
-    private final Button buttonClose     = new Button("✕");
-    private final Button buttonMinimize  = new Button("─");
-    private final Button buttonMaximize  = new Button("□");
-    private final Label labelStatusText  = new Label();
-    private final VBox root              = new VBox();
-    private final HBox toolBar           = new HBox();
-    private final HBox mainUi            = new HBox();
-    private final HBox statusBar         = new HBox();
+    private final Button buttonAddFile     = new Button("Add file");
+    private final Button buttonAddFolder   = new Button("Add folder");
+    private final Button buttonDoZip       = new Button("Zip");
+    private final Button buttonClose       = new Button("✕");
+    private final Button buttonMinimize    = new Button("─");
+    private final Button buttonMaximize    = new Button("□");
+    private final Label labelFileDataCount = new Label();
+    private final Label labelProgress      = new Label();
+    private final VBox root                = new VBox();
+    private final VBox statusBar           = new VBox();
+    private final HBox toolBar             = new HBox();
+    private final HBox mainUi              = new HBox();
     
     private final FileList fileList = new FileList();
     
@@ -98,7 +101,7 @@ public class ZipFXApp extends Application {
     public void start(Stage stage) throws Exception {
         setAllStyles();
         
-        stage.setTitle("ZipFX");
+        stage.setTitle("ZipFX " + VERSION + " by coderodde 2026");
         
         toolBar.getChildren()
                .addAll(buttonAddFile,
@@ -110,7 +113,7 @@ public class ZipFXApp extends Application {
         HBox.setHgrow(fileList, Priority.ALWAYS);
         fileList.setMaxWidth(Double.MAX_VALUE);
         
-        statusBar.getChildren().addAll(labelStatusText);
+        statusBar.getChildren().addAll(labelFileDataCount, labelProgress);
         
         buttonAddFile.setOnAction(eh -> {
             FileChooser chooser = new FileChooser();
@@ -257,16 +260,24 @@ public class ZipFXApp extends Application {
         launch(args);
     }
     
-    public void setStatusBarText(String text) {
-        labelStatusText.setText(text);
+    public void setFileStatusBarText(String text) {
+        labelFileDataCount.setText(text);
     }
     
-    private void clearStatusBarText() {
-        labelStatusText.setText("");
+    private void clearFileStatusBarText() {
+        labelFileDataCount.setText("");
     }
     
-    private void statusBarShowEmptyListMessage() {
-        setStatusMessage("Nothing to zip.", STATUS_MESSAGE_EMPTY_LIST_MILLIS);
+    public void setProgressStatusBarText(String text) {
+        labelProgress.setText(text);
+    }
+    
+    private void clearProgressStatusBarText() {
+        labelProgress.setText("");
+    }
+    
+    public void statusBarShowEmptyListMessage() {
+        setFileStatusMessage("Nothing to zip.", STATUS_MESSAGE_EMPTY_LIST_MILLIS);
     }
     
     private void zipAllSelected(File file, Stage stage) {
@@ -317,7 +328,8 @@ public class ZipFXApp extends Application {
         try {
             zipAllImpl(fileList, file);
         } catch (IOException ex) {
-            setStatusMessage(ex.getMessage(), STATUS_MESSAGE_EMPTY_LIST_MILLIS);
+            setFileStatusBarText("Nothing to zip.");
+//            setStatusMessage(ex.getMessage(), STATUS_MESSAGE_EMPTY_LIST_MILLIS);
         }
     }
     
@@ -393,61 +405,59 @@ public class ZipFXApp extends Application {
         }
     }
     
-    private void setStatusMessage(String text, long durationMillis) {
+    private void setFileStatusMessage(String text, long durationMillis) {
         statusMessageTimer.stop();
-        
-        labelStatusText.setText(text);
-        
+        setFileStatusBarText(text);
         statusMessageTimer.setDuration(Duration.millis(durationMillis));
-        statusMessageTimer.setOnFinished(event -> clearStatusBarText());
+        statusMessageTimer.setOnFinished(event -> clearFileStatusBarText());
         statusMessageTimer.playFromStart();
     }
     
     private void setAllStyles() {
         
         // Stylize the "Close window" button:
-        buttonClose.setStyle(FXML.TitleBar.CloseButton.CSS_DEFAULT);
+        buttonClose.setStyle(ZipAppFXML.TitleBar.CloseButton.CSS_DEFAULT);
         
         buttonClose.setOnMouseEntered(
             event -> 
-                buttonClose.setStyle(FXML.TitleBar.CloseButton.CSS_ON_HOVER)
+                buttonClose.setStyle(ZipAppFXML.TitleBar.CloseButton.CSS_ON_HOVER)
         );
         
         buttonClose.setOnMouseExited(
-            event -> buttonClose.setStyle(FXML.TitleBar.CloseButton.CSS_DEFAULT)
+            event -> buttonClose.setStyle(ZipAppFXML.TitleBar.CloseButton.CSS_DEFAULT)
         );
         
         // Stylize the "Add Folder" button:
-        buttonAddFolder.setStyle(FXML.Buttons.AddFolderButton.CSS_DEFAULT);
+        buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_DEFAULT);
         
         buttonAddFolder.setOnMouseEntered(event ->
-            buttonAddFolder.setStyle(FXML.Buttons.AddFolderButton.CSS_ON_HOVER)
+            buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_ON_HOVER)
         );
         
         buttonAddFolder.setOnMouseExited(event -> 
-            buttonAddFolder.setStyle(FXML.Buttons.AddFolderButton.CSS_DEFAULT)
+            buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_DEFAULT)
         );
         
         // Stylize the "Add File" button:
-        buttonAddFile.setStyle(FXML.Buttons.AddFileButton.CSS_DEFAULT);
+        buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT);
         
         buttonAddFile.setOnMouseEntered(event ->
-            buttonAddFile.setStyle(FXML.Buttons.AddFileButton.CSS_ON_HOVER)
+            buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_ON_HOVER)
         );
         
         buttonAddFile.setOnMouseExited(event -> 
-            buttonAddFile.setStyle(FXML.Buttons.AddFileButton.CSS_DEFAULT)
+            buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT)
         );
         
         // Stylize the "Zip" button:
-        buttonDoZip.setStyle(FXML.Buttons.ZipButton.CSS_DEFAULT);
+        buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_DEFAULT);
         
         buttonDoZip.setOnMouseEntered(event ->
-            buttonDoZip.setStyle(FXML.Buttons.ZipButton.CSS_ON_HOVER)
+            buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_ON_HOVER)
         );
         
         buttonDoZip.setOnMouseExited(event -> 
-            buttonDoZip.setStyle(FXML.Buttons.ZipButton.CSS_DEFAULT)
+            buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_DEFAULT)
         );
         
         toolBar.setStyle("-fx-background-color: black;");
