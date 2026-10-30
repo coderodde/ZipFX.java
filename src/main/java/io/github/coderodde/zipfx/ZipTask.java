@@ -3,7 +3,6 @@ package io.github.coderodde.zipfx;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -168,47 +167,9 @@ public class ZipTask extends Task<Void> {
             RemainingTime remainingTime = 
                 new RemainingTime((int) remainingTimeSeconds);
             
-            String remainingTimeText = 
-                String.format(
-                    "Remaining time: %d:%02d:%02d%",
-                   remainingTime.hours(),
-                   remainingTime.minutes(),
-                   remainingTime.seconds());
-                    
-            
         } else {
             throw new IOException("Not a regular file or directory: " + path);
         }
     }
     
-    private static final class RemainingTime {
-        
-        private static final int SECONDS_PER_MINUTE = 60;
-        private static final int MINUTES_PER_HOUR  = 60;
-        
-        private final int hours;
-        private final int minutes;
-        private final int seconds;
-        
-        RemainingTime(int remainingTimeSeconds) {
-            this.seconds =  remainingTimeSeconds % SECONDS_PER_MINUTE;
-            this.minutes = (remainingTimeSeconds / SECONDS_PER_MINUTE) 
-                                                 % MINUTES_PER_HOUR;
-            
-            this.hours   = (remainingTimeSeconds / SECONDS_PER_MINUTE 
-                                                 / MINUTES_PER_HOUR);
-        }
-        
-        int hours() {
-            return hours;
-        }
-        
-        int minutes() {
-            return minutes;
-        }
-        
-        int seconds() {
-            return seconds;
-        }
-    }
 }
