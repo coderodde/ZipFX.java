@@ -2,6 +2,7 @@ package io.github.coderodde.zipfx;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 
 /**
@@ -9,7 +10,7 @@ import javafx.concurrent.Task;
  */
 public final class FileZipCountUpdateTask extends Task<Void> {
 
-    private static final long SLEEP_DURATION_MILLIS    = 400L;
+    private static final long SLEEP_DURATION_MILLIS    = 1_000L;
     private static final double MINIMUM_PROGRESS       = 1E-4; // 1/10_000
     private static final double NANOSECONDS_PER_SECOND = 1E9;
     
@@ -67,7 +68,9 @@ public final class FileZipCountUpdateTask extends Task<Void> {
         
         String percentsToPrint = String.format("%.1f %%", percentCompressed);
         
-        app.setProgressStatusBarText("Progress: " + percentsToPrint);
+        Platform.runLater(() -> {
+            app.setProgressStatusBarText("Progress: " + percentsToPrint);
+        });
         
         double totalEstimatedDurationNanoseconds
                 = (double) accumaltedNanoseconds.get() 
@@ -80,6 +83,9 @@ public final class FileZipCountUpdateTask extends Task<Void> {
             new RemainingTime((int)(remainingDurationNanoseconds / 
                                     NANOSECONDS_PER_SECOND));
         
-        
+        Platform.runLater(() -> {
+            app.setFileStatusBarText(
+                String.format("Remaining time: %s", remainingTime));
+        });
     }
 }

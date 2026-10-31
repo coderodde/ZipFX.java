@@ -86,7 +86,6 @@ public class ZipTask extends Task<Void> {
         Set<FileListEntry> uniqueFiles = 
             new HashSet<>(Arrays.asList(fileList.toArray()));
         
-        
         try {
             Path targetZipPath = 
                 zipOutputFile
