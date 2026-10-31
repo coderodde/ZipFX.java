@@ -4,6 +4,8 @@ public final class RemainingTime {
 
     private static final int SECONDS_PER_MINUTE = 60;
     private static final int MINUTES_PER_HOUR   = 60;
+    private static final int MAXIMUM_HOURS      = 99;
+    private static final String INFINITY_SIGN   = "\\u221E";
 
     private final int hours;
     private final int minutes;
@@ -21,6 +23,10 @@ public final class RemainingTime {
     
     @Override
     public String toString() {
+        if (hours > MAXIMUM_HOURS) {
+            return INFINITY_SIGN;
+        }
+        
         return "%d:%02d:%02d".formatted(hours, minutes, seconds);
     }
 }

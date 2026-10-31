@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -303,7 +302,8 @@ public class ZipFXApp extends Application {
             }
         }
         
-        FileDataCounter fileCounter = new FileDataCounter();
+        FileDataCounter fileCounter         = new FileDataCounter();
+        FileDataCounter progressDataCounter = new FileDataCounter();
         
         CheckAndCountFilesTask countTask = 
             new CheckAndCountFilesTask(fileList, fileCounter);
@@ -311,10 +311,21 @@ public class ZipFXApp extends Application {
         FileCountUpdateTask fileCounterUpdateTask = 
             new FileCountUpdateTask(this, fileCounter);
         
+        FileZipCountUpdateTask zipCountUpdateTask = 
+            new FileZipCountUpdateTask(this, 
+                                       fileCounter, 
+                                       progressDataCounter);
+        
         countTask.setOnSucceeded(event -> {
             countTask.getValue();
             
-            zipAll(fileList, file, stage);
+            zipAllYeah(fileCounter,
+                       progressDataCounter,
+                       zipCountUpdateTask,
+                       fileList,
+                       file,
+                       this);
+                       
         });
         
         Thread zippingThread       = new Thread(countTask);
@@ -324,39 +335,85 @@ public class ZipFXApp extends Application {
         counterUpdateThread.start();
     }
     
-    private void zipAll(FileList fileList, File file, Stage stage) {
-        try {
-            zipAllImpl(fileList, file);
-        } catch (IOException ex) {
-            setFileStatusBarText("Nothing to zip.");
-//            setStatusMessage(ex.getMessage(), STATUS_MESSAGE_EMPTY_LIST_MILLIS);
-        }
+    private void zipAllYeah(FileDataCounter totalFileDataCounter,
+                        FileDataCounter progressFileDataCounter,
+                        FileZipCountUpdateTask zipCountUpdateTask,
+                        FileList fileList,
+                        File zipOutputFile,
+                        ZipFXApp app) {
+        
+        ZipTask zipTask = new ZipTask(totalFileDataCounter,
+                                      progressFileDataCounter,
+                                      zipCountUpdateTask,
+                                      fileList,
+                                      zipOutputFile,
+                                      app);
+        
+        zipTask.setOnSucceeded(event -> {
+            reportAfterZipping(progressFileDataCounter, zipTask);
+        });
+        
+        Thread zippingThread = new Thread(zipTask);
+        
+        zippingThread.start();
+    }
+    
+    private void reportAfterZipping(FileDataCounter progressFileDataCounter,
+                                    ZipTask zipTask) {
+        
+        long files    = progressFileDataCounter.getFileCount();
+        long folders  = progressFileDataCounter.getDirectoryCount();
+        long duration = zipTask.getDurationMilliseconds();
+        long bytesUncompressed = zipTask.getUncompressedByteCount();
+        long bytesCompressed   = zipTask.getUncompressedByteCount();
+        
+        String textFiles   = Misc.wordFiles(files);
+        String textFolders = Misc.wordDirectories(folders);
+        String textUncompressed = Misc.wordBytes(bytesUncompressed);
+        String textCompressed   = Misc.wordBytes(bytesCompressed);
+        
+        String text = 
+            ("%d %s in %d %s. Duration: %.1f seconds. " +
+             "Compressed %d %s into %d %s.")
+                .formatted(files, 
+                           textFiles, 
+                           folders, 
+                           textFolders,
+                           duration / 1e3, 
+                           bytesUncompressed, 
+                           textUncompressed, 
+                           bytesCompressed, 
+                           textCompressed);
+                
+        this.setProgressStatusBarText("Scanned " + text);
     }
     
     private static void zipAllImpl(FileList fileList, File zipFile) 
     throws IOException {
         
-        Path target = zipFile.toPath().toAbsolutePath().normalize();
         
-        checkFileListContainsNoZipFile(fileList, zipFile);
         
-        try (ZipOutputStream zos = 
-            new ZipOutputStream(Files.newOutputStream(zipFile.toPath()))) {
-        
-            for (FileListEntry entry : fileList) {
-                Path path = entry.file().toPath().toAbsolutePath().normalize();
-
-                if (path.getFileName() == null) {
-                    LOGGER.log(Level.WARNING, 
-                               "Filesystem root is requested for zipping.");
-                }
-
-                addEntry(zos, 
-                         path, 
-                         path.getFileName().toString(),
-                         target);
-            }
-        }
+//        Path target = zipFile.toPath().toAbsolutePath().normalize();
+//        
+//        checkFileListContainsNoZipFile(fileList, zipFile);
+//        
+//        try (ZipOutputStream zos = 
+//            new ZipOutputStream(Files.newOutputStream(zipFile.toPath()))) {
+//        
+//            for (FileListEntry entry : fileList) {
+//                Path path = entry.file().toPath().toAbsolutePath().normalize();
+//
+//                if (path.getFileName() == null) {
+//                    LOGGER.log(Level.WARNING, 
+//                               "Filesystem root is requested for zipping.");
+//                }
+//
+//                addEntry(zos, 
+//                         path, 
+//                         path.getFileName().toString(),
+//                         target);
+//            }
+//        }
     }
     
     private static void addEntry(ZipOutputStream zos,

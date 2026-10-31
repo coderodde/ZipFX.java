@@ -1,6 +1,7 @@
 package io.github.coderodde.zipfx;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 import javafx.concurrent.Task;
 
 /**
@@ -8,14 +9,15 @@ import javafx.concurrent.Task;
  */
 public final class FileZipCountUpdateTask extends Task<Void> {
 
-    private static final long SLEEP_DURATION_MILLIS = 100L;
+    private static final long SLEEP_DURATION_MILLIS    = 400L;
+    private static final double MINIMUM_PROGRESS       = 1E-4; // 1/10_000
+    private static final double NANOSECONDS_PER_SECOND = 1E9;
     
-    private final ZipFXApp app;
+    private final ZipFXApp        app;
     private final FileDataCounter totalFileDataCounter;
     private final FileDataCounter zipProgressDataCounter;
-    private final long startNanoseconds;
-    private volatile boolean requestHalt = false;
-    private long accumulatedNanos = 0L;
+    private final AtomicLong      accumaltedNanoseconds = new AtomicLong(0L);
+    private volatile boolean      requestHalt = false;
     
     public FileZipCountUpdateTask(ZipFXApp app,
                                   FileDataCounter totalFileDataCounter,
@@ -32,8 +34,6 @@ public final class FileZipCountUpdateTask extends Task<Void> {
             Objects.requireNonNull(
                 zipProgressDataCounter, 
                 "The input zip progress data counter is null.");
-        
-        startNanoseconds = System.nanoTime();
     }
     
     @Override
@@ -49,8 +49,8 @@ public final class FileZipCountUpdateTask extends Task<Void> {
         }
     }
     
-    public void addFileZippingDuration(long nanos) {
-        accumulatedNanos += nanos;
+    public void addFileZippingDuration(long nanoseconds) {
+        accumaltedNanoseconds.addAndGet(nanoseconds);
     }
     
     public void halt() {
@@ -59,7 +59,9 @@ public final class FileZipCountUpdateTask extends Task<Void> {
     
     private void printStatistics() {
         double progress = ((double) zipProgressDataCounter.getByteCount()) 
-                       / totalFileDataCounter.getByteCount();
+                        / totalFileDataCounter.getByteCount();
+        
+        progress = Math.max(progress, MINIMUM_PROGRESS);
         
         double percentCompressed = 100.0 * progress;
         
@@ -67,7 +69,16 @@ public final class FileZipCountUpdateTask extends Task<Void> {
         
         app.setProgressStatusBarText("Progress: " + percentsToPrint);
         
-        double totalEstimatedDuration = (double) accumulatedNanos / progress;
+        double totalEstimatedDurationNanoseconds
+                = (double) accumaltedNanoseconds.get() 
+                / progress;
+        
+        double remainingDurationNanoseconds = totalEstimatedDurationNanoseconds
+                                            - accumaltedNanoseconds.get();
+        
+        RemainingTime remainingTime =
+            new RemainingTime((int)(remainingDurationNanoseconds / 
+                                    NANOSECONDS_PER_SECOND));
         
         
     }

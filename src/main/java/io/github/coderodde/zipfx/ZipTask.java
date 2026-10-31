@@ -25,7 +25,9 @@ public class ZipTask extends Task<Void> {
     private final FileList fileList;
     private final File zipOutputFile;
     private final ZipFXApp app;
-    private long currentCompressedBytes = 0L;
+    private long zippingDuration;
+    private long compressedBytes;
+    private long uncompressedBytes;
     
     public ZipTask(FileDataCounter totalFileDataCounter,
                    FileDataCounter progressFileDataCounter,
@@ -60,6 +62,18 @@ public class ZipTask extends Task<Void> {
         this.app = Objects.requireNonNull(app, "The input app is null.");
     }
     
+    public long getDurationMilliseconds() {
+        return zippingDuration;
+    }
+    
+    public long getUncompressedByteCount() {
+        return uncompressedBytes;
+    }
+    
+    public long getCompressedByteCount() {
+        return compressedBytes;
+    }
+    
     @Override
     protected Void call() throws Exception {
         if (fileList.isEmpty()) {
@@ -67,7 +81,9 @@ public class ZipTask extends Task<Void> {
             return null;
         }
         
-        Set<FileListEntry> entries = 
+        long ta = System.currentTimeMillis();
+        
+        Set<FileListEntry> uniqueFiles = 
             new HashSet<>(Arrays.asList(fileList.toArray()));
         
         
@@ -83,7 +99,7 @@ public class ZipTask extends Task<Void> {
             try (ZipOutputStream zos = 
                 new ZipOutputStream(Files.newOutputStream(targetZipPath))) {
                 
-                for (FileListEntry entry : fileList) {
+                for (FileListEntry entry : uniqueFiles) {
                     Path path = entry.file()
                                      .toPath()
                                      .toAbsolutePath()
@@ -109,6 +125,8 @@ public class ZipTask extends Task<Void> {
             
         }
         
+        zippingDuration = System.currentTimeMillis() - ta;
+        compressedBytes = zipOutputFile.length();
         return null;
     }
     
@@ -158,25 +176,7 @@ public class ZipTask extends Task<Void> {
             long fileDuration = System.nanoTime() - ta;
             
             zipCountUpdateTask.addFileZippingDuration(fileDuration);
-            
-            long fileLength   = path.toFile().length();
-            
-            currentCompressedBytes += fileLength;
-            
-            float percentCompressed = (100.0f * currentCompressedBytes)
-                                    / totalFileDataCounter.getByteCount();
-            
-            String percentToPrint = String.format("%.1f %", percentCompressed);
-            
-            float remainingTimeSeconds =
-                ((float) totalFileDataCounter.getByteCount() 
-                    * fileDuration)
-                    / (float) fileLength
-                    / (float) NANOS_PER_SECOND;
-            
-            RemainingTime remainingTime = 
-                new RemainingTime((int) remainingTimeSeconds);
-            
+            uncompressedBytes += path.toFile().length();
         } else {
             throw new IOException("Not a regular file or directory: " + path);
         }
