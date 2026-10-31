@@ -14,6 +14,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
@@ -695,6 +696,8 @@ public class ZipFXApp extends Application {
                                            totalFileDataCounter,
                                            progressFileDataCounter);
             
+            new Thread(fileZipCountUpdateTask).start();
+            
             ZipTask zipTask = new ZipTask(totalFileDataCounter, 
                                           progressFileDataCounter,
                                           fileZipCountUpdateTask,
@@ -702,10 +705,16 @@ public class ZipFXApp extends Application {
                                           outputZipFile,
                                           this);
             
+            
+            
             zipTask.setOnSucceeded(event2 -> {
-                Alert a = new Alert(Alert.AlertType.INFORMATION);
-                a.setTitle("oh yeah");
-                a.show();
+                fileZipCountUpdateTask.halt();
+                
+                Platform.runLater(() -> {
+                    Alert a = new Alert(Alert.AlertType.INFORMATION);
+                    a.setTitle("Done!");
+                    a.show();
+                });
             });
             
             new Thread(zipTask).start();
