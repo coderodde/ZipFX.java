@@ -1,21 +1,33 @@
 package io.github.coderodde.zipfx;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Objects;
+import java.util.zip.ZipOutputStream;
 
 /**
  *
  */
 public final class RecursiveZipFileException extends RuntimeException {
     
-    private final File file;
+    private final Path zipFilePath;
+    private final ZipOutputStream zos;
     
-    public RecursiveZipFileException(File file) {
-        this.file = 
-            Objects.requireNonNull(file, "The input .zip file is null.");
+    public RecursiveZipFileException(Path zipFilePath,
+                                     ZipOutputStream zos) {
+        this.zipFilePath = 
+            Objects.requireNonNull(zipFilePath, 
+                                   "The input .zip file path is null.");
+        
+        this.zos = Objects.requireNonNull(zos, 
+                                          "The input ZipOutputStream is null.");
     }
     
-    public File file() {
-        return file;
+    public Path zipFilePath() {
+        return zipFilePath;
+    }
+    
+    public ZipOutputStream zipOutputStream() {
+        return zos;
     }
 }

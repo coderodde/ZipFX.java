@@ -1,5 +1,6 @@
 package io.github.coderodde.zipfx;
 
+import java.text.NumberFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -9,8 +10,14 @@ import java.util.logging.Logger;
 public final class Misc {
     
     private static final Logger LOGGER = Logger.getLogger("ZipFX");
+    private static final NumberFormat NUMBER_FORMAT = 
+                         NumberFormat.getIntegerInstance();
     
     private Misc() {}
+    
+    public static String integerToString(long l) {
+        return NUMBER_FORMAT.format(l);
+    }
     
     public static void sleep(long durationMillis) {
         try {

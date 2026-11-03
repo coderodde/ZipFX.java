@@ -6,9 +6,7 @@ import static java.lang.Math.clamp;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -683,43 +681,178 @@ public class ZipFXApp extends Application {
     }
     
     private void dispatchZipJob(File outputZipFile) {
-        FileDataCounter totalFileDataCounter    = new FileDataCounter();
-        FileDataCounter progressFileDataCounter = new FileDataCounter();
+        FileDataCounter total    = new FileDataCounter();
+        FileDataCounter progress = new FileDataCounter();
         
-        CheckAndCountFilesTask checkAndCountFilesTask = 
-            new CheckAndCountFilesTask(fileList, totalFileDataCounter);
+        CheckAndCountFilesTask countTask = 
+            new CheckAndCountFilesTask(fileList, total);
         
-        checkAndCountFilesTask.setOnSucceeded(event -> {
-            
-            FileZipCountUpdateTask fileZipCountUpdateTask = 
-                new FileZipCountUpdateTask(this, 
-                                           totalFileDataCounter,
-                                           progressFileDataCounter);
-            
-            new Thread(fileZipCountUpdateTask).start();
-            
-            ZipTask zipTask = new ZipTask(totalFileDataCounter, 
-                                          progressFileDataCounter,
-                                          fileZipCountUpdateTask,
-                                          fileList,
-                                          outputZipFile,
-                                          this);
-            
-            
-            
-            zipTask.setOnSucceeded(event2 -> {
-                fileZipCountUpdateTask.halt();
-                
-                Platform.runLater(() -> {
-                    Alert a = new Alert(Alert.AlertType.INFORMATION);
-                    a.setTitle("Done!");
-                    a.show();
-                });
-            });
-            
-            new Thread(zipTask).start();
+        FileCountUpdateTask countUpdater = new FileCountUpdateTask(this, total);
+        
+        countTask.setOnFailed(event -> {
+            countUpdater.cancel();
+            System.out.println("yeah 1");
         });
         
-        new Thread(checkAndCountFilesTask).start();
+        countTask.setOnCancelled(event -> countUpdater.cancel());
+        countTask.setOnSucceeded(event -> {
+            countUpdater.cancel();
+            
+            FileZipCountUpdateTask zipUpdater = 
+                new FileZipCountUpdateTask(this,
+                                           total, 
+                                           progress);
+            
+            ZipTask zipTask = 
+                new ZipTask(total, 
+                            progress, 
+                            zipUpdater, 
+                            fileList, 
+                            outputZipFile, 
+                            this);
+            
+            zipTask.setOnSucceeded(zipEvent -> {
+                zipUpdater.halt();
+                System.out.println("hello");
+            });
+            
+            zipTask.setOnFailed(zipEvent -> {
+                zipUpdater.halt();
+                System.out.println("error");
+            });
+            
+            zipTask.setOnCancelled(zipEvent -> zipUpdater.halt());
+            
+            new Thread(zipUpdater, "zip-progress").start();
+            new Thread(zipTask, "zip-writer").start();
+        });
+        
+        new Thread(countUpdater, "file-count-progress").start();
+        new Thread(countTask, "file-counter").start();
+//        
+//        
+//        try {
+//            countTask.get();
+//        } catch (InterruptedException ex) {
+//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+//        } catch (ExecutionException ex) {
+//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+//        }
+//        
+//        try {
+//            countUpdater.get();
+//        } catch (InterruptedException ex) {
+//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+//        } catch (ExecutionException ex) {
+//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+//        }
+//        
+//        Thread checkAndCountFilesTaskThread = 
+//            new Thread(countTask);
+//        
+//        Thread fileCountUpdateTaskThread = new Thread(countUpdater);
+//        
+//        checkAndCountFilesTask.setOnSucceeded(event -> {
+//            
+//            FileZipCountUpdateTask fileZipCountUpdateTask = 
+//                new FileZipCountUpdateTask(this, 
+//                                           totalFileDataCounter,
+//                                           progressFileDataCounter);
+//            
+//            new Thread(fileZipCountUpdateTask).start();
+//            
+//            ZipTask zipTask = new ZipTask(totalFileDataCounter, 
+//                                          progressFileDataCounter,
+//                                          fileZipCountUpdateTask,
+//                                          fileList,
+//                                          outputZipFile,
+//                                          this);
+//            
+//            zipTask.setOnSucceeded(event2 -> {
+//                fileZipCountUpdateTask.halt();
+//                
+//                Platform.runLater(() -> {
+//                    Alert a = new Alert(Alert.AlertType.INFORMATION);
+//                    a.setTitle("Done!");
+//                    a.show();
+//                });
+//            });
+//            
+//            new Thread(zipTask).start();
+//        });
+        
+//        checkAndCountFilesTaskThread.start();
+//        fileCountUpdateTaskThread.start();
+//        
+//        try {
+//            checkAndCountFilesTaskThread.join();
+//        } catch (InterruptedException ex) {
+//            errorMessageBoxOnThreadJoin(ex.getMessage());
+//        }
+//        
+//        try {
+//            fileCountUpdateTaskThread.join();
+//        } catch (InterruptedException ex) {
+//            errorMessageBoxOnThreadJoin(ex.getMessage());
+//        }
+        
+//        FileZipCountUpdateTask fileZipCountUpdateTask = 
+//            new FileZipCountUpdateTask(this,
+//                                       total, 
+//                                       progress);
+//        
+//        ZipTask zipTask = new ZipTask(total,
+//                                      progress,
+//                                      fileZipCountUpdateTask,
+//                                      fileList,
+//                                      outputZipFile,
+//                                      this);
+//        Thread fileZipCountUpdateTaskThread =
+//            new Thread(fileZipCountUpdateTask);
+//        
+//        Thread zipTaskThread = new Thread(zipTask);
+//        
+//        fileZipCountUpdateTaskThread.start();
+//        zipTaskThread.start();
+//        
+//        try {
+//            fileZipCountUpdateTaskThread.join();
+//        } catch (InterruptedException ex) {
+//            errorMessageBoxOnThreadJoin(ex.getMessage());
+//        }
+//        
+//        try {
+//            zipTaskThread.join();
+//        } catch (InterruptedException ex) {
+//            errorMessageBoxOnThreadJoin(ex.getMessage());
+//        }
+        
+//        try {
+//            zipTask.get();
+//        } catch (InterruptedException ex) {
+//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+//        } catch (ExecutionException ex) {
+//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+//        }
+//        
+//        try {
+//            countUpdater.get();
+//        } catch (InterruptedException ex) {
+//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+//        } catch (ExecutionException ex) {
+//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+//        }
+    }
+    
+    private static void errorMessageBoxOnThreadJoin(String message) {
+        errorMessageBox(message);
+    }
+    
+    private static void errorMessageBox(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Error");
+        alert.setHeaderText("Could not join a thread");
+        alert.setContentText(message);
+        alert.show();
     }
 }

@@ -1,5 +1,6 @@
 package io.github.coderodde.zipfx;
 
+import static io.github.coderodde.zipfx.Misc.integerToString;
 import static io.github.coderodde.zipfx.Misc.sleep;
 import static io.github.coderodde.zipfx.Misc.wordBytes;
 import static io.github.coderodde.zipfx.Misc.wordDirectories;
@@ -13,7 +14,8 @@ import javafx.concurrent.Task;
  */
 public final class FileCountUpdateTask extends Task<Void> {
 
-    private static final long COUNT_UPDATE_SLEEP = 100L;
+    // Milliseconds.
+    private static final long COUNT_UPDATE_SLEEP = 500L;
     
     private final ZipFXApp app;
     private final FileDataCounter fileDataCounter;
@@ -40,22 +42,26 @@ public final class FileCountUpdateTask extends Task<Void> {
             }
             
             Platform.runLater(() -> {
-                long files       = fileDataCounter.getFileCount();
-                long directories = fileDataCounter.getDirectoryCount();
-                long bytes       = fileDataCounter.getByteCount();
+                long numFiles       = fileDataCounter.getFileCount();
+                long numDirectories = fileDataCounter.getDirectoryCount();
+                long numBytes       = fileDataCounter.getByteCount();
                 
-                String strFile      = wordFiles(files);
-                String strDirectory = wordDirectories(directories);
-                String strBytes     = wordBytes(bytes);
+                String strFiles       = integerToString(numFiles);
+                String strDirectories = integerToString(numFiles);
+                String strBytes       = integerToString(numFiles);
+                
+                String wordFile      = wordFiles(numFiles);
+                String wordDirectory = wordDirectories(numDirectories);
+                String wordBytes     = wordBytes(numBytes);
                 
                 app.setFileStatusBarText(
-                    "Counted %d %s in %d %s worth %d %s."
-                        .formatted(files, 
-                                   strFile, 
-                                   directories, 
-                                   strDirectory, 
-                                   bytes, 
-                                   strBytes));
+                    "Counted %s %s in %s %s worth %s %s."
+                        .formatted(strFiles, 
+                                   wordFile, 
+                                   strDirectories,
+                                   wordDirectory, 
+                                   strBytes,
+                                   wordBytes));
             });
             
             sleep(COUNT_UPDATE_SLEEP);

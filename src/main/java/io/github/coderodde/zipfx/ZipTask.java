@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 
 /**
@@ -105,7 +106,7 @@ public class ZipTask extends Task<Void> {
                                      .normalize();
                     
                     if (path.getFileName() == null) {
-                        throw new RootZipFileException();
+                        throw new RootZipFileException(targetZipPath, zos);
                     }
                     
                     addEntry(zos, 
@@ -116,12 +117,38 @@ public class ZipTask extends Task<Void> {
                 }
                 
             } catch (RecursiveZipFileException ex) {
+                Path p = ex.zipFilePath().toAbsolutePath().normalize();
                 
+                Platform.runLater(() -> {
+                    app.setProgressStatusBarText(
+                        "The target .zip file is within compression tree: " + 
+                        p.toString());
+                });
+                
+                ex.zipOutputStream().close();
+                
+                Files.delete(p);
+                
+                return null;
             } catch (RootZipFileException ex) {
                 
+                Platform.runLater(() -> {
+                    app.setProgressStatusBarText(
+                        "Trying to compress the root folder.");
+                });
+                
+                ex.zipOutputStream().close();
+                
+                Files.delete(ex.zipFilePath());
+                
+                return null;
             }
         } catch (IOException ex) {
+            app.setProgressStatusBarText("I/O error: " + ex.getMessage());
             
+            Files.deleteIfExists(zipOutputFile.toPath());
+            
+            return null;
         }
         
         zippingDuration = System.currentTimeMillis() - ta;
@@ -149,7 +176,7 @@ public class ZipTask extends Task<Void> {
         }
         
         if (Files.isRegularFile(path) && path.equals(output)) {
-            throw new RecursiveZipFileException(zipOutputFile);
+            throw new RecursiveZipFileException(output, zos);
         }
         
         if (Files.isDirectory(path)) {
