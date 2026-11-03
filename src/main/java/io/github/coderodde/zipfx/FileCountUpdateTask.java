@@ -14,7 +14,7 @@ import javafx.concurrent.Task;
  */
 public final class FileCountUpdateTask extends Task<Void> {
 
-    // Milliseconds.
+    // Milliseconds
     private static final long COUNT_UPDATE_SLEEP = 500L;
     
     private final ZipFXApp app;
@@ -47,8 +47,8 @@ public final class FileCountUpdateTask extends Task<Void> {
                 long numBytes       = fileDataCounter.getByteCount();
                 
                 String strFiles       = integerToString(numFiles);
-                String strDirectories = integerToString(numFiles);
-                String strBytes       = integerToString(numFiles);
+                String strDirectories = integerToString(numDirectories);
+                String strBytes       = integerToString(numBytes);
                 
                 String wordFile      = wordFiles(numFiles);
                 String wordDirectory = wordDirectories(numDirectories);
