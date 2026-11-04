@@ -1,16 +1,22 @@
 package io.github.coderodde.zipfx;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.nio.file.StandardCopyOption;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-import javafx.application.Platform;
 import javafx.concurrent.Task;
 
 /**
@@ -18,15 +24,16 @@ import javafx.concurrent.Task;
  */
 public class ZipTask extends Task<Void> {
     
+    private static final int BUFFER_SIZE = 64 * 1024;
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
 
-    private final FileDataCounter totalFileDataCounter;
     private final FileDataCounter progressFileDataCounter;
     private final FileZipCountUpdateTask zipCountUpdateTask;
-    private final FileList fileList;
-    private final File zipOutputFile;
-    private final ZipFXApp app;
-    private long zippingDuration;
+    private final Set<Path> sourcePaths = new LinkedHashSet<>();
+    private final Path outputPath;
+    private final byte[] buffer = new byte[BUFFER_SIZE];
+    
+    private long durationMilliseconds;
     private long compressedBytes;
     private long uncompressedBytes;
     
@@ -37,10 +44,11 @@ public class ZipTask extends Task<Void> {
                    File zipOutputFile,
                    ZipFXApp app) {
         
-        this.totalFileDataCounter = 
-            Objects.requireNonNull(
-                totalFileDataCounter,
-                "The input total file data counter is null.");
+        Objects.requireNonNull(totalFileDataCounter,
+                               "The input total file data counter is null.");
+        
+        Objects.requireNonNull(app, "The input app is null.");
+        Objects.requireNonNull(fileList, "The file list is null.");
         
         this.progressFileDataCounter = 
             Objects.requireNonNull(
@@ -52,19 +60,25 @@ public class ZipTask extends Task<Void> {
                 zipCountUpdateTask, 
                 "The input zip count update task is null.");
         
-        this.fileList =
-            Objects.requireNonNull(fileList, "The file list is null.");
         
-        this.zipOutputFile = 
+        this.outputPath = 
             Objects.requireNonNull(
                 zipOutputFile, 
-                "The input .zip file is null.");
+                "The input .zip file is null.")
+                    .toPath()
+                    .toAbsolutePath()
+                    .normalize();
         
-        this.app = Objects.requireNonNull(app, "The input app is null.");
+        for (FileListEntry entry : fileList) {
+            sourcePaths.add(entry.file()
+                                 .toPath()
+                                 .toAbsolutePath()
+                                 .normalize());
+        }
     }
     
     public long getDurationMilliseconds() {
-        return zippingDuration;
+        return durationMilliseconds;
     }
     
     public long getUncompressedByteCount() {
@@ -77,135 +91,206 @@ public class ZipTask extends Task<Void> {
     
     @Override
     protected Void call() throws Exception {
-        if (fileList.isEmpty()) {
-            app.statusBarShowEmptyListMessage();
-            return null;
+        long startNanos = System.nanoTime();
+        
+        if (sourcePaths.isEmpty()) {
+            throw new IOException("Nothing to zip.");
         }
         
-        long ta = System.currentTimeMillis();
+        Path destination = validateDestination();
         
-        Set<FileListEntry> uniqueFiles = 
-            new HashSet<>(Arrays.asList(fileList.toArray()));
+        Path temporaryArchive = 
+            Files.createTempFile(
+                    destination.getParent(), 
+                    ".zipfx-", 
+                    ".tmp");
         
         try {
-            Path targetZipPath = 
-                zipOutputFile
-                    .toPath()
-                    .toAbsolutePath()
-                    .normalize();
-            
-//            checkFileListContainsNoZipFile(targetZipPath, fileList);
-
-            try (ZipOutputStream zos = 
-                new ZipOutputStream(Files.newOutputStream(targetZipPath))) {
+            try (ZipOutputStream output = new ZipOutputStream(
+                new BufferedOutputStream(
+                        Files.newOutputStream(temporaryArchive)))) {
                 
-                for (FileListEntry entry : uniqueFiles) {
-                    Path path = entry.file()
-                                     .toPath()
-                                     .toAbsolutePath()
-                                     .normalize();
-                    
-                    if (path.getFileName() == null) {
-                        throw new RootZipFileException(targetZipPath, zos);
-                    }
-                    
-                    addEntry(zos, 
-                             path, 
-                             path.getFileName().toString(), 
-                             targetZipPath,
-                             entry);
+                for (Path source : sourcePaths) {
+                    addEntry(output, source, source.getFileName().toString());
                 }
-                
-            } catch (RecursiveZipFileException ex) {
-                Path p = ex.zipFilePath().toAbsolutePath().normalize();
-                
-                Platform.runLater(() -> {
-                    app.setProgressStatusBarText(
-                        "The target .zip file is within compression tree: " + 
-                        p.toString());
-                });
-                
-                ex.zipOutputStream().close();
-                
-                Files.delete(p);
-                
-                return null;
-            } catch (RootZipFileException ex) {
-                
-                Platform.runLater(() -> {
-                    app.setProgressStatusBarText(
-                        "Trying to compress the root folder.");
-                });
-                
-                ex.zipOutputStream().close();
-                
-                Files.delete(ex.zipFilePath());
-                
-                return null;
             }
-        } catch (IOException ex) {
-            app.setProgressStatusBarText("I/O error: " + ex.getMessage());
             
-            Files.deleteIfExists(zipOutputFile.toPath());
+            // Closing ZipOutputStream writes the ZIP central directory.
+            long archiveSize = Files.size(temporaryArchive);
+            
+            checkCancellation();
+            publishArchive(temporaryArchive, destination);
+            
+            compressedBytes      = archiveSize;
+            durationMilliseconds = TimeUnit.NANOSECONDS
+                                           .toMillis(System.nanoTime() - 
+                                                     startNanos);
             
             return null;
+        } catch (IOException | RuntimeException | Error failure) {
+            try {
+                Files.deleteIfExists(temporaryArchive);
+            } catch (IOException cleanupFailure) {
+                failure.addSuppressed(cleanupFailure);
+            }
+            
+            throw failure;
         }
-        
-        zippingDuration = System.currentTimeMillis() - ta;
-        compressedBytes = zipOutputFile.length();
-        return null;
     }
     
-    private void addEntry(ZipOutputStream zos,
-                          Path path,
-                          String entryName,
-                          Path output,
-                          FileListEntry ownerFileListEntry) throws IOException {
+    private Path validateDestination() throws IOException {
+        if (outputPath.getFileName() == null) {
+            throw new IOException();
+        }
         
-        if (Files.isSymbolicLink(path)) {
+        Path destination = 
+            outputPath
+                .getParent()
+                .toRealPath()
+                .resolve(outputPath.getFileName());
+        
+        if (Files.isSymbolicLink(destination)) {
+            throw new FileIsSymbolicLinkException(destination.toFile(), null, "");
+        }
+        
+        boolean destinationExists = 
+            Files.exists(destination, LinkOption.NOFOLLOW_LINKS);
+        
+        if (destinationExists 
+            && !Files.isRegularFile(destination, LinkOption.NOFOLLOW_LINKS)) {
             
-            if (Files.isDirectory(path)) {
-                throw new DirectorySymbolicLinkException(path.toFile(),
-                                                         ownerFileListEntry);
-            } else if (Files.isRegularFile(path)) {
-                throw new FileSymbolicLinkException(path.toFile(),
-                                                    ownerFileListEntry);
-            } else {
-                throw new IllegalStateException("Unknown state.");
+            throw new IOException(
+                "The output is not a regular file: " + destination
+            );
+        }
+        
+        for (Path source : sourcePaths) {
+            checkCancellation();
+            
+            if (source.getFileName() == null) {
+                throw new IOException(
+                    "Cannot zip a filesystem root: " + source
+                );
+            }
+            
+            rejectSymbolicLink(source);
+            
+            Path realSource = source.toRealPath();
+            
+            if (destinationExists 
+                && Files.isSameFile(realSource, destination)) {
+                
+                throw new IOException("The output ZIP is also a source file: " + 
+                                      destination);
+            }
+            
+            if (Files.isDirectory(realSource)
+                && destination.startsWith(realSource)) {
+                
+                throw new IOException(
+                    "The output ZIP file is inside a selected directory: " 
+                    + destination
+                );
             }
         }
         
-        if (Files.isRegularFile(path) && path.equals(output)) {
-            throw new RecursiveZipFileException(output, zos);
-        }
+        return destination;
+    }
+    
+    private void addEntry(ZipOutputStream output,
+                          Path source,
+                          String entryName) throws IOException {
         
-        if (Files.isDirectory(path)) {
-            zos.putNextEntry(new ZipEntry(entryName + "/"));
-            zos.closeEntry();
+        checkCancellation();
+        rejectSymbolicLink(source);
+        
+        if (Files.isDirectory((source), LinkOption.NOFOLLOW_LINKS)) {
+            output.putNextEntry(new ZipEntry(entryName + "/"));
+            output.closeEntry();
+            progressFileDataCounter.increaseDirectoryCounter();
             
-            try (var children = Files.newDirectoryStream(path)) {
+            try (DirectoryStream<Path> children =
+                    Files.newDirectoryStream(source)) {
+                
                 for (Path child : children) {
-                    addEntry(zos,
+                    addEntry(output,
                              child,
-                             entryName + "/" + child.getFileName(),
-                             output,
-                             ownerFileListEntry);
+                             entryName + "/" + child.getFileName());
                 }
+                
+                return;
             }
-        } else if (Files.isRegularFile(path)) {
-            long ta = System.nanoTime();
+        }
+        
+        if (!Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("Not a regular file or directory: " + source);
+        }
+        
+        writeFile(output, source, entryName);
+    }
+        
+    private void writeFile(ZipOutputStream output,
+                           Path source,
+                           String entryName) throws IOException {
+        
+        long lastUpdateNanos = System.nanoTime();
+        
+        output.putNextEntry(new ZipEntry(entryName));
+        
+        try (InputStream input = Files.newInputStream(source)) {
+            int bytesRead;
             
-            zos.putNextEntry(new ZipEntry(entryName));
-            Files.copy(path, zos);
-            zos.closeEntry();
-            
-            long fileDuration = System.nanoTime() - ta;
-            
-            zipCountUpdateTask.addFileZippingDuration(fileDuration);
-            uncompressedBytes += path.toFile().length();
-        } else {
-            throw new IOException("Not a regular file or directory: " + path);
+            while ((bytesRead = input.read(buffer)) != -1) {
+                checkCancellation();
+                output.write(buffer, 0, bytesRead);
+                
+                long now = System.nanoTime();
+                
+                zipCountUpdateTask.addFileZippingDuration(
+                    now - lastUpdateNanos
+                );
+                
+                lastUpdateNanos = now;
+                
+                uncompressedBytes += bytesRead;
+                progressFileDataCounter.addByteCounter(bytesRead);
+            }
+        }
+        
+        output.closeEntry();
+        
+        zipCountUpdateTask.addFileZippingDuration(
+            System.nanoTime() - lastUpdateNanos
+        );
+        
+        progressFileDataCounter.increaseFileCounter();
+    }
+    
+    private void checkCancellation() {
+        if (isCancelled()) {
+            throw new CancellationException("Zipping was cancelled.");
         }
     }
     
+    private static void rejectSymbolicLink(Path path) throws IOException {
+        if (Files.isSymbolicLink(path)) {
+            throw new IOException("Cannot zip a symbolic link: " + path);
+        }
+    }
+    
+    private static void publishArchive(Path temporaryArchive,
+                                       Path destination) throws IOException {
+        try {
+            Files.move(temporaryArchive, 
+                       destination,
+                       StandardCopyOption.ATOMIC_MOVE, 
+                       StandardCopyOption.REPLACE_EXISTING);
+            
+        } catch (AtomicMoveNotSupportedException ex) {
+            
+            Files.move(temporaryArchive, 
+                       destination, 
+                       StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
 }

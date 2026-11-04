@@ -6,13 +6,11 @@ import static java.lang.Math.clamp;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
@@ -713,13 +711,13 @@ public class ZipFXApp extends Application {
             
             zipTask.setOnSucceeded(zipEvent -> {
                 zipUpdater.halt();
-                System.out.println("hello");
+                reportAfterZipping(progress, zipTask);
             });
             
-            zipTask.setOnFailed(zipEvent -> {
-                zipUpdater.halt();
-                System.out.println("error");
-            });
+//            zipTask.setOnFailed(zipEvent -> {
+//                zipUpdater.halt();
+//                System.out.println("error");
+//            });
             
             zipTask.setOnCancelled(zipEvent -> zipUpdater.halt());
             
