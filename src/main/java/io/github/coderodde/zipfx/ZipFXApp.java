@@ -276,62 +276,6 @@ public class ZipFXApp extends Application {
     public void statusBarShowEmptyListMessage() {
         setFileStatusMessage("Nothing to zip.", STATUS_MESSAGE_EMPTY_LIST_MILLIS);
     }
-//    
-//    private void zipAllSelected(File file, Stage stage) {
-//        if (fileList.isEmpty()) {
-//            statusBarShowEmptyListMessage();
-//            return;
-//        }
-//        
-//        Set<File> fileSet = new HashSet<>();
-//        
-//        for (int i = 0; i < fileList.size(); ++i) {
-//            fileSet.add(fileList.getFileListEntry(i).file());
-//        }
-//        
-//        // Prune duplicates:
-//        Iterator<FileListEntry> iterator = fileList.iterator();
-//        
-//        while (iterator.hasNext()) {
-//            FileListEntry entry = iterator.next();
-//            
-//            if (!fileSet.contains(entry.file())) {
-//                iterator.remove();
-//            }
-//        }
-//        
-//        FileDataCounter fileCounter         = new FileDataCounter();
-//        FileDataCounter progressDataCounter = new FileDataCounter();
-//        
-//        CheckAndCountFilesTask countTask = 
-//            new CheckAndCountFilesTask(fileList, fileCounter);
-//        
-//        FileCountUpdateTask fileCounterUpdateTask = 
-//            new FileCountUpdateTask(this, fileCounter);
-//        
-//        FileZipCountUpdateTask zipCountUpdateTask = 
-//            new FileZipCountUpdateTask(this, 
-//                                       fileCounter, 
-//                                       progressDataCounter);
-//        
-//        countTask.setOnSucceeded(event -> {
-//            countTask.getValue();
-//            
-//            zipAllYeah(fileCounter,
-//                       progressDataCounter,
-//                       zipCountUpdateTask,
-//                       fileList,
-//                       file,
-//                       this);
-//                       
-//        });
-//        
-//        Thread zippingThread       = new Thread(countTask);
-//        Thread counterUpdateThread = new Thread(fileCounterUpdateTask);
-//        
-//        zippingThread.start();
-//        counterUpdateThread.start();
-//    }
     
     private void doZipAll(FileDataCounter totalFileDataCounter,
                           FileDataCounter progressFileDataCounter,
@@ -711,13 +655,22 @@ public class ZipFXApp extends Application {
             
             zipTask.setOnSucceeded(zipEvent -> {
                 zipUpdater.halt();
+                setFileStatusBarText("");
                 reportAfterZipping(progress, zipTask);
             });
             
-//            zipTask.setOnFailed(zipEvent -> {
-//                zipUpdater.halt();
-//                System.out.println("error");
-//            });
+            zipTask.setOnFailed(zipEvent -> {
+                zipUpdater.halt();
+                setFileStatusBarText("");
+                
+                Throwable cause = zipTask.getException();
+                
+                setProgressStatusBarText(
+                    "Coould not create a .zip file: " + cause.getMessage()
+                );
+                
+                System.out.println("error");
+            });
             
             zipTask.setOnCancelled(zipEvent -> zipUpdater.halt());
             

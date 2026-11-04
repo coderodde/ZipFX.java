@@ -17,8 +17,7 @@ public final class FileZipCountUpdateTask extends Task<Void> {
     private final ZipFXApp        app;
     private final FileDataCounter totalFileDataCounter;
     private final FileDataCounter zipProgressDataCounter;
-    private final AtomicLong      accumulateddNanoseconds = new AtomicLong(0L);
-    private volatile boolean      requestHalt = false;
+    private final AtomicLong      elapsedZippingNanos = new AtomicLong();
     
     public FileZipCountUpdateTask(ZipFXApp app,
                                   FileDataCounter totalFileDataCounter,
@@ -48,7 +47,7 @@ public final class FileZipCountUpdateTask extends Task<Void> {
     }
     
     public void addFileZippingDuration(long nanoseconds) {
-        accumulateddNanoseconds.addAndGet(nanoseconds);
+        elapsedZippingNanos.addAndGet(nanoseconds);
     }
     
     public void halt() {
@@ -58,65 +57,49 @@ public final class FileZipCountUpdateTask extends Task<Void> {
     private void printStatistics() {
         long totalBytes     = totalFileDataCounter.getByteCount();
         long processedBytes = zipProgressDataCounter.getByteCount();
-        long elapsedNanos   = accumulateddNanoseconds.get();
+        long elapsedNanos   = elapsedZippingNanos.get();
         
-        double progress = totalBytes > 0 
-                        ? Math.clamp((double) processedBytes / totalBytes, 
-                                     0.0,
-                                     1.0)
-                        : 0.0;
-        
-        String progressText = 
-            String.format("Progress: %.1f %%", 100.0 * progress);
-        
+        String progressText;
         String remainingText;
         
-        if (progress == 1.0) {
-            remainingText = "Remaining time: " + new RemainingTime(0);
-        } else if (progress == 0.0 || elapsedNanos == 0L) {
-            remainingText = "Remaining time: estimating...";
+        if (totalBytes == 0L) {
+            progressText  = "Progress: no file data to compress.";
+            remainingText = ""; 
         } else {
-            double elapsedSeconds   = elapsedNanos / NANOSECONDS_PER_SECOND;
-            double remainingSeconds = elapsedSeconds * (1.0 - progress)
-                                                     / progress;
-            remainingText = "Remaining time: " 
-                          + new RemainingTime(
-                                  (int) Math.ceil(remainingSeconds));
-        }
-        
-        Platform.runLater(() -> {
-            if (isCancelled()) {
-                return;
+            double progress = Math.clamp((double) processedBytes / totalBytes, 
+                                         0.0,
+                                         1.0);
+
+            progressText = "Progress: %.1f %%".formatted(100.0 * progress);
+            
+            if (processedBytes >= totalBytes) {
+                remainingText = "Finishing archive...";
+            } else if (processedBytes == 0L || elapsedNanos == 0L) {
+                remainingText = "Remaining time: estimating...";
+            } else {
+                long remainingBytes     = totalBytes - processedBytes;
+                double elapsedSeconds   = elapsedNanos / NANOSECONDS_PER_SECOND;
+                double remainingSeconds = elapsedSeconds 
+                                        * remainingBytes
+                                        / processedBytes;
+                
+                remainingText = "Remaining time: " 
+                              + new RemainingTime(
+                                      (int) Math.ceil(remainingSeconds)
+                              );
             }
             
-            app.setProgressStatusBarText(progressText);
-            app.setFileStatusBarText(remainingText);
-        });
-        
-//        progress = Math.max(progress, MINIMUM_PROGRESS);
-//        
-//        double percentCompressed = 100.0 * progress;
-//        
-//        String percentsToPrint = String.format("%.1f %%", percentCompressed);
-//        
-//        Platform.runLater(() -> {
-//            app.setProgressStatusBarText("Progress: " + percentsToPrint);
-//        });
-//        
-//        double totalEstimatedDurationNanoseconds
-//                = (double) accumulateddNanoseconds.get() 
-//                / progress;
-//        
-//        double remainingDurationNanoseconds = totalEstimatedDurationNanoseconds
-//                                            - accumulateddNanoseconds.get();
-//        
-//        RemainingTime remainingTime =
-//            new RemainingTime((int)(remainingDurationNanoseconds / 
-//                                    NANOSECONDS_PER_SECOND));
-//        
-//        Platform.runLater(() -> {
-//            app.setFileStatusBarText(
-//                String.format("Remaining time: %s", remainingTime));
-//        });
+            String statusText = remainingText.isEmpty() 
+                              ? progressText 
+                              : progressText + "    |    " + remainingText;
+            
+            Platform.runLater(() -> {
+                if (!isCancelled()) {
+                    app.setProgressStatusBarText(statusText);
+//                    app.setProgressStatusBarText(progressText);
+//                    app.setFileStatusBarText(remainingText);
+                }
+            });
+        }
     }
 }
