@@ -1,5 +1,7 @@
 package io.github.coderodde.zipfx;
 
+import io.github.coderodde.zipfx.buttons.ZipFXControlButton;
+import io.github.coderodde.zipfx.buttons.ZipFXControlButton.ButtonIdentity;
 import java.io.File;
 import java.io.IOException;
 import static java.lang.Math.clamp;
@@ -76,9 +78,11 @@ public class ZipFXApp extends Application {
             -fx-text-fill: black;
             """;
     
-    private final Button buttonAddFile     = new Button("Add file");
-    private final Button buttonAddFolder   = new Button("Add folder");
-    private final Button buttonDoZip       = new Button("Zip");
+    private final ZipFXControlButton buttonAddFile;  
+    private final ZipFXControlButton buttonAddFolder;
+    private final ZipFXControlButton buttonRemoveAll;
+    private final ZipFXControlButton buttonZip;
+    
     private final Button buttonClose       = new Button("✕");
     private final Button buttonMinimize    = new Button("─");
     private final Button buttonMaximize    = new Button("□");
@@ -94,8 +98,17 @@ public class ZipFXApp extends Application {
     private double dragOffsetX;
     private double dragOffsetY;
     
+    public ZipFXApp() {
+        buttonAddFile   = new ZipFXControlButton(ButtonIdentity.ADD_FILE);
+        buttonAddFolder = new ZipFXControlButton(ButtonIdentity.ADD_FOLDER);
+        buttonRemoveAll = new ZipFXControlButton(ButtonIdentity.REMOVE_ALL);
+        buttonZip       = new ZipFXControlButton(ButtonIdentity.ZIP);
+    }
+    
     @Override
     public void start(Stage stage) throws Exception {
+        disableButtons();
+        giveNamesToControlButtons();
         setAllStyles();
         
         stage.setTitle("ZipFX " + VERSION + " by coderodde 2026");
@@ -103,7 +116,8 @@ public class ZipFXApp extends Application {
         toolBar.getChildren()
                .addAll(buttonAddFile,
                        buttonAddFolder,
-                       buttonDoZip);
+                       buttonRemoveAll,
+                       buttonZip);
         
         mainUi.getChildren().add(fileList);
         
@@ -134,7 +148,7 @@ public class ZipFXApp extends Application {
             }
         });
         
-        buttonDoZip.setOnAction(event -> {
+        buttonZip.setOnAction(event -> {
             FileChooser chooser = new FileChooser();
             chooser.setTitle("Choose the .zip file");
             
@@ -358,6 +372,18 @@ public class ZipFXApp extends Application {
 //        }
     }
     
+    private void disableButtons() {
+        buttonRemoveAll.disable();
+        buttonZip.disable();
+    }
+    
+    private void giveNamesToControlButtons() {
+        buttonAddFile  .setText("Add file");
+        buttonAddFolder.setText("Add folder");
+        buttonRemoveAll.setText("Remove all");
+        buttonZip      .setText("Zip");
+    }
+    
     private static void addEntry(ZipOutputStream zos,
                                  Path path,
                                  String entryName,
@@ -448,16 +474,16 @@ public class ZipFXApp extends Application {
             buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT)
         );
         
-        // Stylize the "Zip" button:
-        buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_DEFAULT);
-        
-        buttonDoZip.setOnMouseEntered(event ->
-            buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_ON_HOVER)
-        );
-        
-        buttonDoZip.setOnMouseExited(event -> 
-            buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_DEFAULT)
-        );
+//        // Stylize the "Zip" button:
+//        buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_DEFAULT);
+//        
+//        buttonDoZip.setOnMouseEntered(event ->
+//            buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_ON_HOVER)
+//        );
+//        
+//        buttonDoZip.setOnMouseExited(event -> 
+//            buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_DEFAULT)
+//        );
         
         toolBar.setStyle("-fx-background-color: black;");
     }

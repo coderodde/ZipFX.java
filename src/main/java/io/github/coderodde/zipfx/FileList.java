@@ -9,6 +9,10 @@ import javafx.scene.control.ListView;
 public final class FileList extends ListView<FileListEntry> 
                             implements Iterable<FileListEntry> {
     
+    public FileList() {
+        setStyles();
+    }
+    
     public void add(FileListEntry entry) {
         getItems().add(entry);
     }
@@ -37,4 +41,13 @@ public final class FileList extends ListView<FileListEntry>
     public FileListEntry[] toArray() {
         return getItems().toArray(FileListEntry[]::new);
     }
+    
+    private void setStyles() {
+        setStyle(FXML);
+    }
+    
+    private static final String FXML = 
+        """
+        -fx-background-color: #ddd;
+        """;
 }
