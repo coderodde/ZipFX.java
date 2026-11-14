@@ -117,7 +117,9 @@ public class ZipTask extends Task<Void> {
                 for (Path source : sourcePaths) {
                     checkCancellation();
                     
-                    addEntry(output, source, source.getFileName().toString());
+                    addEntry(output, 
+                             source, 
+                             source.getFileName().toString());
                 }
             }
             

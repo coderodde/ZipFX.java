@@ -14,6 +14,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
@@ -109,7 +110,12 @@ public class ZipFXApp extends Application {
     private double dragOffsetY;
     
     private CheckAndCountFilesTask activeCountTask;
+    private FileCountUpdateTask activeCountUpdater;
+    
     private ZipTask activeZipTask;
+    private FileZipCountUpdateTask activeZipUpdater;
+    
+    private boolean cancellationRequested;
     
     public ZipFXApp() {
         buttonAddFile   = new ZipFXControlButton(ButtonIdentity.ADD_FILE);
@@ -197,7 +203,15 @@ public class ZipFXApp extends Application {
         });
         
         buttonCancel.setOnAction(event -> {
+            if (currentState != State.ZIPPING || cancellationRequested) {
+                return;
+            }
+            
+            cancellationRequested = true;
             buttonCancel.disable();
+            
+            setUpperStatusBarText("Cancelling...");
+            setLowerStatusBarText("");
             
             if (activeCountTask != null) {
                 activeCountTask.cancel();
@@ -207,8 +221,13 @@ public class ZipFXApp extends Application {
                 activeZipTask.cancel();
             }
             
-            setUpperStatusBarText("Cancelling...");
-            setLowerStatusBarText("");
+            if (activeCountUpdater != null) {
+                activeCountUpdater.cancel();
+            }
+            
+            if (activeZipUpdater != null) {
+                activeZipUpdater.cancel();
+            }
         });
         
 //        statusBar.getChildren()
@@ -319,12 +338,20 @@ public class ZipFXApp extends Application {
     }
     
     public void setState(State state) {
-        switch (Objects.requireNonNull(state)) {
+        currentState = Objects.requireNonNull(state);
+        
+        switch (currentState) {
             case IDLE_EMPTY_LIST     -> setStateForIdleEmptyList();
             case IDLE_NON_EMPTY_LIST -> setStateForIdleNonEmptyList();
             case ZIPPING             -> setStateForZipping();
             default -> throw new IllegalStateException("Should not get here.");
         }
+    }
+    
+    private void restoreIdleState() {
+        setState(fileList.isEmpty() 
+                 ? State.IDLE_EMPTY_LIST
+                 : State.IDLE_NON_EMPTY_LIST);
     }
     
     private void setStateForIdleEmptyList() {
@@ -404,7 +431,7 @@ public class ZipFXApp extends Application {
         long folders  = progressFileDataCounter.getDirectoryCount();
         long duration = zipTask.getDurationMilliseconds();
         long bytesUncompressed = zipTask.getUncompressedByteCount();
-        long bytesCompressed   = zipTask.getUncompressedByteCount();
+        long bytesCompressed   = zipTask.getCompressedByteCount();
         
         String textFiles   = Misc.wordFiles(files);
         String textFolders = Misc.wordDirectories(folders);
@@ -734,6 +761,10 @@ public class ZipFXApp extends Application {
     }
     
     private void dispatchZipJob(File outputZipFile) {
+        Objects.requireNonNull(outputZipFile);
+        
+        cancellationRequested = false;
+        
         FileDataCounter total    = new FileDataCounter();
         FileDataCounter progress = new FileDataCounter();
         
@@ -742,59 +773,163 @@ public class ZipFXApp extends Application {
         
         FileCountUpdateTask countUpdater = new FileCountUpdateTask(this, total);
         
-        countTask.setOnFailed(event -> {
-            countUpdater.cancel();
-            System.out.println("yeah 1");
-        });
+        activeCountTask    = countTask;
+        activeCountUpdater = countUpdater;
+        activeZipTask      = null;
+        activeZipUpdater   = null;
         
-        countTask.setOnCancelled(event -> countUpdater.cancel());
-        countTask.setOnSucceeded(event -> {
-            countUpdater.cancel();
-            
-            FileZipCountUpdateTask zipUpdater = 
-                new FileZipCountUpdateTask(this,
-                                           total, 
-                                           progress);
-            
-            ZipTask zipTask = 
-                new ZipTask(total, 
-                            progress, 
-                            zipUpdater, 
-                            fileList, 
-                            outputZipFile, 
-                            this);
-            
-            zipTask.setOnSucceeded(zipEvent -> {
-                zipUpdater.halt();
-                setUpperStatusBarText("");
-                reportAfterZipping(progress, zipTask);
-            });
-            
-            zipTask.setOnFailed(zipEvent -> {
-                zipUpdater.halt();
-                setUpperStatusBarText("");
-                
-                Throwable cause = zipTask.getException();
-                
-                setLowerStatusBarText(
-                    "Coould not create a .zip file: " + cause.getMessage()
-                );
-                
-                System.out.println("error");
-            });
-            
-            zipTask.setOnCancelled(zipEvent -> zipUpdater.halt());
-            
-            new Thread(zipUpdater, "zip-progress").start();
-            new Thread(zipTask, "zip-writer").start();
-        });
+        setState(State.ZIPPING);
         
-        new Thread(countUpdater, "file-count-progress").start();
-        new Thread(countTask, "file-counter").start();
+        Thread countUpdaterThread = 
+            new Thread(countUpdater, "file-count-progress");
+        
+        countUpdaterThread.setDaemon(true);
 
-        currentState = fileList.isEmpty()
-                     ? State.IDLE_EMPTY_LIST 
-                     : State.IDLE_NON_EMPTY_LIST;
+        Thread countThread = new Thread(() -> {
+            try {
+                countTask.run();
+            } finally {
+                countUpdater.cancel();
+                
+                Platform.runLater(() -> {
+                    activeCountTask    = null;
+                    activeCountUpdater = null;
+                    
+                    if (cancellationRequested || countTask.isCancelled()) {
+                        
+                        setUpperStatusBarText("Zipping cancelled.");
+                        setLowerStatusBarText("");
+                        
+                        restoreIdleState();
+                        return;
+                    }
+                    
+                    Throwable countFailure = countTask.getException();
+                    
+                    if (countFailure != null) {
+                        setUpperStatusBarText("Could not count files.");
+                        setLowerStatusBarText(countFailure.getMessage());
+                        
+                        restoreIdleState();
+                        return;
+                    }
+                    
+                    FileZipCountUpdateTask zipUpdater = 
+                        new FileZipCountUpdateTask(ZipFXApp.this,
+                                                   total,
+                                                   progress);
+                    
+                    ZipTask zipTask = 
+                        new ZipTask(
+                            total,
+                            progress,
+                            zipUpdater,
+                            fileList,
+                            outputZipFile,
+                            ZipFXApp.this);
+                    
+                    activeZipUpdater = zipUpdater;
+                    activeZipTask    = zipTask;
+                    
+                    Thread zipUpdaterThread = 
+                        new Thread(zipUpdater, "zip-progress");
+                    
+                    zipUpdaterThread.setDaemon(true);
+                    
+                    Thread zipThread = new Thread(() -> {
+                        try {
+                            zipTask.run();
+                        } finally {
+                            zipUpdater.halt();
+                            
+                            Platform.runLater(() -> {
+                                activeZipTask    = null;
+                                activeZipUpdater = null;
+                                
+                                if (cancellationRequested ||
+                                        zipTask.isCancelled()) {
+                                    
+                                    setUpperStatusBarText("Zipping cancelled.");
+                                    setLowerStatusBarText("");
+                                } else if (zipTask.getException() != null) {
+                                    Throwable cause = zipTask.getException();
+                                    
+                                    setUpperStatusBarText(
+                                            "Could not create a .zip file.");
+                                    
+                                    setLowerStatusBarText(cause.getMessage());
+                                } else {
+                                    setUpperStatusBarText("");
+                                    
+                                    reportAfterZipping(progress, zipTask);
+                                }
+                                
+                                restoreIdleState();
+                            });
+                        }
+                    }, "zip-writer");
+                    
+                    zipUpdaterThread.start();
+                    zipThread.start();
+                });    
+            }
+        }, "file-counter");
+        
+        countUpdaterThread.start();
+        countThread.start();
+//        countTask.setOnFailed(event -> {
+//            countUpdater.cancel();
+//            System.out.println("yeah 1");
+//        });
+//        
+//        countTask.setOnCancelled(event -> countUpdater.cancel());
+//        countTask.setOnSucceeded(event -> {
+//            countUpdater.cancel();
+//            
+//            FileZipCountUpdateTask zipUpdater = 
+//                new FileZipCountUpdateTask(this,
+//                                           total, 
+//                                           progress);
+//            
+//            ZipTask zipTask = 
+//                new ZipTask(total, 
+//                            progress, 
+//                            zipUpdater, 
+//                            fileList, 
+//                            outputZipFile, 
+//                            this);
+//            
+//            zipTask.setOnSucceeded(zipEvent -> {
+//                zipUpdater.halt();
+//                setUpperStatusBarText("");
+//                reportAfterZipping(progress, zipTask);
+//            });
+//            
+//            zipTask.setOnFailed(zipEvent -> {
+//                zipUpdater.halt();
+//                setUpperStatusBarText("");
+//                
+//                Throwable cause = zipTask.getException();
+//                
+//                setLowerStatusBarText(
+//                    "Coould not create a .zip file: " + cause.getMessage()
+//                );
+//                
+//                System.out.println("error");
+//            });
+//            
+//            zipTask.setOnCancelled(zipEvent -> zipUpdater.halt());
+//            
+//            new Thread(zipUpdater, "zip-progress").start();
+//            new Thread(zipTask, "zip-writer").start();
+//        });
+//        
+//        new Thread(countUpdater, "file-count-progress").start();
+//        new Thread(countTask, "file-counter").start();
+//
+////        currentState = fileList.isEmpty()
+////                     ? State.IDLE_EMPTY_LIST 
+////                     : State.IDLE_NON_EMPTY_LIST;
     }
     
     private static void errorMessageBoxOnThreadJoin(String message) {
