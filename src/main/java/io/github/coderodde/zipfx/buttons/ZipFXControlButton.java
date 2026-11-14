@@ -11,7 +11,8 @@ public final class ZipFXControlButton extends Button {
         ADD_FILE,
         ADD_FOLDER,
         REMOVE_ALL,
-        ZIP
+        ZIP,
+        CANCEL;
     }
     
     private boolean isEnabled = true;

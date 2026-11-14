@@ -8,6 +8,7 @@ import static java.lang.Math.clamp;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -36,6 +37,12 @@ import javafx.util.Duration;
  * This JavaFX application is for zipping files and folders.
  */
 public class ZipFXApp extends Application {
+    
+    public enum State {
+        IDLE_EMPTY_LIST,
+        IDLE_NON_EMPTY_LIST,
+        ZIPPING;
+    }
     
     private static final PauseTransition statusMessageTimer = 
                      new PauseTransition();
@@ -78,22 +85,25 @@ public class ZipFXApp extends Application {
             -fx-text-fill: black;
             """;
     
+    private State currentState = State.IDLE_EMPTY_LIST;
+    
     private final ZipFXControlButton buttonAddFile;  
     private final ZipFXControlButton buttonAddFolder;
     private final ZipFXControlButton buttonRemoveAll;
     private final ZipFXControlButton buttonZip;
+    private final ZipFXControlButton buttonCancel;
     
     private final Button buttonClose       = new Button("✕");
     private final Button buttonMinimize    = new Button("─");
     private final Button buttonMaximize    = new Button("□");
-    private final Label labelFileDataCount = new Label();
-    private final Label labelProgress      = new Label();
+    private final Label labelUpperStatusBar = new Label();
+    private final Label labelLowerStatusBar      = new Label();
     private final VBox root                = new VBox();
     private final VBox statusBar           = new VBox();
     private final HBox toolBar             = new HBox();
     private final HBox mainUi              = new HBox();
     
-    private final FileList fileList = new FileList();
+    private final FileList fileList = new FileList(this);
     
     private double dragOffsetX;
     private double dragOffsetY;
@@ -103,6 +113,7 @@ public class ZipFXApp extends Application {
         buttonAddFolder = new ZipFXControlButton(ButtonIdentity.ADD_FOLDER);
         buttonRemoveAll = new ZipFXControlButton(ButtonIdentity.REMOVE_ALL);
         buttonZip       = new ZipFXControlButton(ButtonIdentity.ZIP);
+        buttonCancel    = new ZipFXControlButton(ButtonIdentity.CANCEL);
     }
     
     @Override
@@ -117,16 +128,22 @@ public class ZipFXApp extends Application {
                .addAll(buttonAddFile,
                        buttonAddFolder,
                        buttonRemoveAll,
-                       buttonZip);
+                       buttonZip,
+                       buttonCancel);
         
         mainUi.getChildren().add(fileList);
         
         HBox.setHgrow(fileList, Priority.ALWAYS);
         fileList.setMaxWidth(Double.MAX_VALUE);
         
-        statusBar.getChildren().addAll(labelFileDataCount, labelProgress);
+        statusBar.getChildren().addAll(labelUpperStatusBar,
+                                       labelLowerStatusBar);
         
         buttonAddFile.setOnAction(eh -> {
+            if (currentState == State.ZIPPING) {
+                return;
+            }
+            
             FileChooser chooser = new FileChooser();
             chooser.setTitle("Choose a file");
             
@@ -134,10 +151,16 @@ public class ZipFXApp extends Application {
             
             if (file != null) {
                 fileList.add(new FileListEntry(fileList, file));
+                
+                
             }
         });
         
         buttonAddFolder.setOnAction(eh -> {
+            if (currentState == State.ZIPPING) {
+                return;
+            }
+            
             DirectoryChooser chooser = new DirectoryChooser();
             chooser.setTitle("Choose a folder");
             
@@ -149,6 +172,11 @@ public class ZipFXApp extends Application {
         });
         
         buttonZip.setOnAction(event -> {
+            if (currentState == State.ZIPPING) {
+                // One zipping operation is already going on.
+                return;
+            }
+            
             FileChooser chooser = new FileChooser();
             chooser.setTitle("Choose the .zip file");
             
@@ -160,6 +188,7 @@ public class ZipFXApp extends Application {
             File file = chooser.showSaveDialog(stage);
             
             if (file != null) {
+                currentState = State.ZIPPING;
                 dispatchZipJob(file);
             }
         });
@@ -271,20 +300,56 @@ public class ZipFXApp extends Application {
         launch(args);
     }
     
+    public void setState(State state) {
+        switch (Objects.requireNonNull(state)) {
+            case IDLE_EMPTY_LIST     -> setStateForIdleEmptyList();
+            case IDLE_NON_EMPTY_LIST -> setStateForIdleNonEmptyList();
+            case ZIPPING             -> setStateForZipping();
+            default -> throw new IllegalStateException("Should not get here.");
+        }
+    }
+    
+    private void setStateForIdleEmptyList() {
+        buttonAddFile   .enable();
+        buttonAddFolder .enable();
+        
+        buttonCancel    .disable();
+        buttonRemoveAll .disable();
+        buttonZip       .disable();
+    }
+    
+    private void setStateForIdleNonEmptyList() {
+        buttonAddFile   .enable();
+        buttonAddFolder .enable();
+        
+        buttonCancel    .disable();
+        buttonRemoveAll .enable();
+        buttonZip       .enable();
+    }
+    
+    private void setStateForZipping() {
+        buttonAddFile   .disable();
+        buttonAddFolder .disable();
+        
+        buttonCancel    .enable();
+        buttonRemoveAll .disable();
+        buttonZip       .disable();
+    }
+    
     public void setFileStatusBarText(String text) {
-        labelFileDataCount.setText(text);
+        labelUpperStatusBar.setText(text);
     }
     
     private void clearFileStatusBarText() {
-        labelFileDataCount.setText("");
+        labelUpperStatusBar.setText("");
     }
     
     public void setProgressStatusBarText(String text) {
-        labelProgress.setText(text);
+        labelLowerStatusBar.setText(text);
     }
     
     private void clearProgressStatusBarText() {
-        labelProgress.setText("");
+        labelLowerStatusBar.setText("");
     }
     
     public void statusBarShowEmptyListMessage() {
@@ -375,6 +440,7 @@ public class ZipFXApp extends Application {
     private void disableButtons() {
         buttonRemoveAll.disable();
         buttonZip.disable();
+        buttonCancel.disable();
     }
     
     private void giveNamesToControlButtons() {
@@ -382,6 +448,7 @@ public class ZipFXApp extends Application {
         buttonAddFolder.setText("Add folder");
         buttonRemoveAll.setText("Remove all");
         buttonZip      .setText("Zip");
+        buttonCancel   .setText("Cancel");
     }
     
     private static void addEntry(ZipOutputStream zos,
@@ -706,119 +773,10 @@ public class ZipFXApp extends Application {
         
         new Thread(countUpdater, "file-count-progress").start();
         new Thread(countTask, "file-counter").start();
-//        
-//        
-//        try {
-//            countTask.get();
-//        } catch (InterruptedException ex) {
-//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-//        } catch (ExecutionException ex) {
-//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-//        }
-//        
-//        try {
-//            countUpdater.get();
-//        } catch (InterruptedException ex) {
-//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-//        } catch (ExecutionException ex) {
-//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-//        }
-//        
-//        Thread checkAndCountFilesTaskThread = 
-//            new Thread(countTask);
-//        
-//        Thread fileCountUpdateTaskThread = new Thread(countUpdater);
-//        
-//        checkAndCountFilesTask.setOnSucceeded(event -> {
-//            
-//            FileZipCountUpdateTask fileZipCountUpdateTask = 
-//                new FileZipCountUpdateTask(this, 
-//                                           totalFileDataCounter,
-//                                           progressFileDataCounter);
-//            
-//            new Thread(fileZipCountUpdateTask).start();
-//            
-//            ZipTask zipTask = new ZipTask(totalFileDataCounter, 
-//                                          progressFileDataCounter,
-//                                          fileZipCountUpdateTask,
-//                                          fileList,
-//                                          outputZipFile,
-//                                          this);
-//            
-//            zipTask.setOnSucceeded(event2 -> {
-//                fileZipCountUpdateTask.halt();
-//                
-//                Platform.runLater(() -> {
-//                    Alert a = new Alert(Alert.AlertType.INFORMATION);
-//                    a.setTitle("Done!");
-//                    a.show();
-//                });
-//            });
-//            
-//            new Thread(zipTask).start();
-//        });
-        
-//        checkAndCountFilesTaskThread.start();
-//        fileCountUpdateTaskThread.start();
-//        
-//        try {
-//            checkAndCountFilesTaskThread.join();
-//        } catch (InterruptedException ex) {
-//            errorMessageBoxOnThreadJoin(ex.getMessage());
-//        }
-//        
-//        try {
-//            fileCountUpdateTaskThread.join();
-//        } catch (InterruptedException ex) {
-//            errorMessageBoxOnThreadJoin(ex.getMessage());
-//        }
-        
-//        FileZipCountUpdateTask fileZipCountUpdateTask = 
-//            new FileZipCountUpdateTask(this,
-//                                       total, 
-//                                       progress);
-//        
-//        ZipTask zipTask = new ZipTask(total,
-//                                      progress,
-//                                      fileZipCountUpdateTask,
-//                                      fileList,
-//                                      outputZipFile,
-//                                      this);
-//        Thread fileZipCountUpdateTaskThread =
-//            new Thread(fileZipCountUpdateTask);
-//        
-//        Thread zipTaskThread = new Thread(zipTask);
-//        
-//        fileZipCountUpdateTaskThread.start();
-//        zipTaskThread.start();
-//        
-//        try {
-//            fileZipCountUpdateTaskThread.join();
-//        } catch (InterruptedException ex) {
-//            errorMessageBoxOnThreadJoin(ex.getMessage());
-//        }
-//        
-//        try {
-//            zipTaskThread.join();
-//        } catch (InterruptedException ex) {
-//            errorMessageBoxOnThreadJoin(ex.getMessage());
-//        }
-        
-//        try {
-//            zipTask.get();
-//        } catch (InterruptedException ex) {
-//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-//        } catch (ExecutionException ex) {
-//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-//        }
-//        
-//        try {
-//            countUpdater.get();
-//        } catch (InterruptedException ex) {
-//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-//        } catch (ExecutionException ex) {
-//            System.getLogger(ZipFXApp.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
-//        }
+
+        currentState = fileList.isEmpty()
+                     ? State.IDLE_EMPTY_LIST 
+                     : State.IDLE_NON_EMPTY_LIST;
     }
     
     private static void errorMessageBoxOnThreadJoin(String message) {
