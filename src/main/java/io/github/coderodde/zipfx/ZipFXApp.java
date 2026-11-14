@@ -3,22 +3,15 @@ package io.github.coderodde.zipfx;
 import io.github.coderodde.zipfx.buttons.ZipFXControlButton;
 import io.github.coderodde.zipfx.buttons.ZipFXControlButton.ButtonIdentity;
 import java.io.File;
-import java.io.IOException;
 import static java.lang.Math.clamp;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
 import java.util.Objects;
 import java.util.logging.Logger;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
@@ -58,8 +51,6 @@ public class ZipFXApp extends Application {
     private static final double WINDOW_HEIGHT = 350.0;
     
     private static final long STATUS_MESSAGE_EMPTY_LIST_MILLIS = 3000L;
-    private static final long STATUS_MESSAGE_ZIP_IS_SOURCE     = 3000L;
-    private static final long STATUS_MESSAGE_IO_EXCEPTION      = 5000L;
     
     private static final String VERSION = "1.0.0";
     
@@ -226,13 +217,10 @@ public class ZipFXApp extends Application {
             }
             
             if (activeZipUpdater != null) {
+                activeZipUpdater.halt();
                 activeZipUpdater.cancel();
             }
         });
-        
-//        statusBar.getChildren()
-//                 .addAll(labelStatusTitle,
-//                         labelStatusText);
         
         root.getChildren()
             .addAll(toolBar,
@@ -393,48 +381,21 @@ public class ZipFXApp extends Application {
         labelLowerStatusBar.setText(text);
     }
     
-    private void clearProgressStatusBarText() {
-        labelLowerStatusBar.setText("");
-    }
-    
     public void statusBarShowEmptyListMessage() {
         setFileStatusMessage("Nothing to zip.", STATUS_MESSAGE_EMPTY_LIST_MILLIS);
-    }
-    
-    private void doZipAll(FileDataCounter totalFileDataCounter,
-                          FileDataCounter progressFileDataCounter,
-                          FileZipCountUpdateTask zipCountUpdateTask,
-                          FileList fileList,
-                          File zipOutputFile,
-                          ZipFXApp app) {
-        
-        ZipTask zipTask = new ZipTask(totalFileDataCounter,
-                                      progressFileDataCounter,
-                                      zipCountUpdateTask,
-                                      fileList,
-                                      zipOutputFile,
-                                      app);
-        
-        zipTask.setOnSucceeded(event -> {
-            reportAfterZipping(progressFileDataCounter, zipTask);
-        });
-        
-        Thread zippingThread = new Thread(zipTask);
-        
-        zippingThread.start();
     }
     
     private void reportAfterZipping(FileDataCounter progressFileDataCounter,
                                     ZipTask zipTask) {
         
-        long files    = progressFileDataCounter.getFileCount();
-        long folders  = progressFileDataCounter.getDirectoryCount();
-        long duration = zipTask.getDurationMilliseconds();
+        long files             = progressFileDataCounter.getFileCount();
+        long folders           = progressFileDataCounter.getDirectoryCount();
+        long duration          = zipTask.getDurationMilliseconds();
         long bytesUncompressed = zipTask.getUncompressedByteCount();
         long bytesCompressed   = zipTask.getCompressedByteCount();
         
-        String textFiles   = Misc.wordFiles(files);
-        String textFolders = Misc.wordDirectories(folders);
+        String textFiles        = Misc.wordFiles(files);
+        String textFolders      = Misc.wordDirectories(folders);
         String textUncompressed = Misc.wordBytes(bytesUncompressed);
         String textCompressed   = Misc.wordBytes(bytesCompressed);
         
@@ -454,34 +415,6 @@ public class ZipFXApp extends Application {
         this.setLowerStatusBarText("Scanned " + text);
     }
     
-    private static void zipAllImpl(FileList fileList, File zipFile) 
-    throws IOException {
-        
-        
-        
-//        Path target = zipFile.toPath().toAbsolutePath().normalize();
-//        
-//        checkFileListContainsNoZipFile(fileList, zipFile);
-//        
-//        try (ZipOutputStream zos = 
-//            new ZipOutputStream(Files.newOutputStream(zipFile.toPath()))) {
-//        
-//            for (FileListEntry entry : fileList) {
-//                Path path = entry.file().toPath().toAbsolutePath().normalize();
-//
-//                if (path.getFileName() == null) {
-//                    LOGGER.log(Level.WARNING, 
-//                               "Filesystem root is requested for zipping.");
-//                }
-//
-//                addEntry(zos, 
-//                         path, 
-//                         path.getFileName().toString(),
-//                         target);
-//            }
-//        }
-    }
-    
     private void disableButtons() {
         buttonRemoveAll.disable();
         buttonZip.disable();
@@ -494,52 +427,6 @@ public class ZipFXApp extends Application {
         buttonRemoveAll.setText("Remove all");
         buttonZip      .setText("Zip");
         buttonCancel   .setText("Cancel");
-    }
-    
-    private static void addEntry(ZipOutputStream zos,
-                                 Path path,
-                                 String entryName,
-                                 Path output) throws IOException {
-        
-        if (Files.isSymbolicLink(path) || path.equals(output)) {
-            return;
-        }
-        
-        if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
-            zos.putNextEntry(new ZipEntry(entryName + "/"));
-            zos.closeEntry();
-            
-            try (var children = Files.newDirectoryStream(path)) {
-                for (Path child : children) {
-                    addEntry(zos,
-                             child,
-                             entryName + "/" + child.getFileName(),
-                             output);
-                }
-            }
-        } else if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
-            zos.putNextEntry(new ZipEntry(entryName));
-            Files.copy(path, zos);
-            zos.closeEntry();
-        } else {
-            throw new IOException("Not a regular file or directory: " + path);
-        }
-    }
-    
-    private static void checkFileListContainsNoZipFile(
-        FileList fileList, 
-        File zipFile) throws IOException {
-        
-        for (FileListEntry entry : fileList) {
-            if (entry.file()
-                     .toPath()
-                     .toAbsolutePath()
-                     .normalize()
-                     .equals(zipFile)) {
-                
-                throw new IOException("Output ZIP is a also a source file.");
-            }
-        }
     }
     
     private void setFileStatusMessage(String text, long durationMillis) {
@@ -586,26 +473,7 @@ public class ZipFXApp extends Application {
             buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT)
         );
         
-//        // Stylize the "Zip" button:
-//        buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_DEFAULT);
-//        
-//        buttonDoZip.setOnMouseEntered(event ->
-//            buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_ON_HOVER)
-//        );
-//        
-//        buttonDoZip.setOnMouseExited(event -> 
-//            buttonDoZip.setStyle(ZipAppFXML.Buttons.ZipButton.CSS_DEFAULT)
-//        );
-        
         toolBar.setStyle("-fx-background-color: black;");
-    }
-    
-    private static String wordFiles(int numberOfFiles) {
-        return numberOfFiles == 1 ? "file" : "files";
-    }
-    
-    private static String wordDirectories(int numberOfDirectories) {
-        return numberOfDirectories == 1 ? "directory" : "directories";
     }
     
     private static final class WindowResizeHandler {
@@ -877,70 +745,5 @@ public class ZipFXApp extends Application {
         
         countUpdaterThread.start();
         countThread.start();
-//        countTask.setOnFailed(event -> {
-//            countUpdater.cancel();
-//            System.out.println("yeah 1");
-//        });
-//        
-//        countTask.setOnCancelled(event -> countUpdater.cancel());
-//        countTask.setOnSucceeded(event -> {
-//            countUpdater.cancel();
-//            
-//            FileZipCountUpdateTask zipUpdater = 
-//                new FileZipCountUpdateTask(this,
-//                                           total, 
-//                                           progress);
-//            
-//            ZipTask zipTask = 
-//                new ZipTask(total, 
-//                            progress, 
-//                            zipUpdater, 
-//                            fileList, 
-//                            outputZipFile, 
-//                            this);
-//            
-//            zipTask.setOnSucceeded(zipEvent -> {
-//                zipUpdater.halt();
-//                setUpperStatusBarText("");
-//                reportAfterZipping(progress, zipTask);
-//            });
-//            
-//            zipTask.setOnFailed(zipEvent -> {
-//                zipUpdater.halt();
-//                setUpperStatusBarText("");
-//                
-//                Throwable cause = zipTask.getException();
-//                
-//                setLowerStatusBarText(
-//                    "Coould not create a .zip file: " + cause.getMessage()
-//                );
-//                
-//                System.out.println("error");
-//            });
-//            
-//            zipTask.setOnCancelled(zipEvent -> zipUpdater.halt());
-//            
-//            new Thread(zipUpdater, "zip-progress").start();
-//            new Thread(zipTask, "zip-writer").start();
-//        });
-//        
-//        new Thread(countUpdater, "file-count-progress").start();
-//        new Thread(countTask, "file-counter").start();
-//
-////        currentState = fileList.isEmpty()
-////                     ? State.IDLE_EMPTY_LIST 
-////                     : State.IDLE_NON_EMPTY_LIST;
-    }
-    
-    private static void errorMessageBoxOnThreadJoin(String message) {
-        errorMessageBox(message);
-    }
-    
-    private static void errorMessageBox(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Error");
-        alert.setHeaderText("Could not join a thread");
-        alert.setContentText(message);
-        alert.show();
     }
 }

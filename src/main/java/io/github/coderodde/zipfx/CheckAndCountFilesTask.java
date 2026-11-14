@@ -3,6 +3,7 @@ package io.github.coderodde.zipfx;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
 import javafx.concurrent.Task;
 
 /**
@@ -25,18 +26,25 @@ public final class CheckAndCountFilesTask extends Task<Void> {
     
     @Override
     protected Void call() throws Exception {
+        checkCancellation();
+        
         for (FileListEntry entry : fileList) {
+            checkCancellation();
             processEntry(entry);
         }
         
+        checkCancellation();
         return null;
     }
     
     private void processEntry(FileListEntry entry) {
+        checkCancellation();
         processEntryImpl(entry.file(), entry);
     }
     
     private void processEntryImpl(File file, FileListEntry entry) {
+        checkCancellation();
+        
         if (Files.isSymbolicLink(file.toPath())) {
             if (file.isFile()) {
                 throw new FileSymbolicLinkException(file, entry);
@@ -46,6 +54,8 @@ public final class CheckAndCountFilesTask extends Task<Void> {
                 throw new IllegalStateException("Unknown state.");
             }
         }
+        
+        checkCancellation();
         
         if (file.isFile()) {
             counter.increaseFileCounter();
@@ -57,12 +67,21 @@ public final class CheckAndCountFilesTask extends Task<Void> {
         
         File[] children = file.listFiles();
         
+        checkCancellation();
+        
         if (children == null) {
             return;
         }
         
         for (File child : children) {
+            checkCancellation();
             processEntryImpl(child, entry);
+        }
+    }
+    
+    private void checkCancellation() {
+        if (isCancelled()) {
+            throw new CancellationException("File counting was cancelled.");
         }
     }
 }

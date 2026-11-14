@@ -91,9 +91,9 @@ public class ZipTask extends Task<Void> {
     
     @Override
     protected Void call() throws Exception {
-        long startNanos = System.nanoTime();
-        
+        long startNanos       = System.nanoTime();
         Path temporaryArchive = null;
+        Throwable failure     = null;
         
         try {
             checkCancellation();
@@ -107,7 +107,10 @@ public class ZipTask extends Task<Void> {
             checkCancellation();
             
             temporaryArchive = 
-                Files.createTempFile(destination.getParent(), ".zipfx", ".tmp");
+                Files.createTempFile(
+                    destination.getParent(),
+                    ".zipfx-", 
+                    ".tmp");
         
             try (ZipOutputStream output = 
                 new ZipOutputStream(
@@ -137,9 +140,20 @@ public class ZipTask extends Task<Void> {
                 TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
         
             return null;
+        } catch (Exception | Error ex) {
+            failure = ex;
+            throw ex;
         } finally {
             if (temporaryArchive != null) {
-                Files.deleteIfExists(temporaryArchive);
+                try {
+                    Files.deleteIfExists(temporaryArchive);
+                } catch (IOException cleanupFailure) {
+                    if (failure != null) {
+                        failure.addSuppressed(cleanupFailure);
+                    } else {
+                        throw cleanupFailure;
+                    }
+                }
             }
         }
     }
@@ -242,24 +256,20 @@ public class ZipTask extends Task<Void> {
         long lastUpdateNanos = System.nanoTime();
         
         output.putNextEntry(new ZipEntry(entryName));
+        byte[] buffer = new byte[BUFFER_SIZE];
         
         try (InputStream input = Files.newInputStream(source)) {
-            int bytesRead;
-            
-            while ((bytesRead = input.read(buffer)) != -1) {
+            while (true) {
+                checkCancellation();
+                
+                int bytesRead = input.read(buffer);
+                
+                if (bytesRead == -1) {
+                    break;
+                }
+                
                 checkCancellation();
                 output.write(buffer, 0, bytesRead);
-                
-                long now = System.nanoTime();
-                
-                zipCountUpdateTask.addFileZippingDuration(
-                    now - lastUpdateNanos
-                );
-                
-                lastUpdateNanos = now;
-                
-                uncompressedBytes += bytesRead;
-                progressFileDataCounter.addByteCounter(bytesRead);
             }
         }
         
