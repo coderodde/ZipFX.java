@@ -108,6 +108,9 @@ public class ZipFXApp extends Application {
     private double dragOffsetX;
     private double dragOffsetY;
     
+    private CheckAndCountFilesTask activeCountTask;
+    private ZipTask activeZipTask;
+    
     public ZipFXApp() {
         buttonAddFile   = new ZipFXControlButton(ButtonIdentity.ADD_FILE);
         buttonAddFolder = new ZipFXControlButton(ButtonIdentity.ADD_FOLDER);
@@ -191,6 +194,21 @@ public class ZipFXApp extends Application {
                 currentState = State.ZIPPING;
                 dispatchZipJob(file);
             }
+        });
+        
+        buttonCancel.setOnAction(event -> {
+            buttonCancel.disable();
+            
+            if (activeCountTask != null) {
+                activeCountTask.cancel();
+            }
+            
+            if (activeZipTask != null) {
+                activeZipTask.cancel();
+            }
+            
+            setUpperStatusBarText("Cancelling...");
+            setLowerStatusBarText("");
         });
         
 //        statusBar.getChildren()
@@ -336,7 +354,7 @@ public class ZipFXApp extends Application {
         buttonZip       .disable();
     }
     
-    public void setFileStatusBarText(String text) {
+    public void setUpperStatusBarText(String text) {
         labelUpperStatusBar.setText(text);
     }
     
@@ -344,7 +362,7 @@ public class ZipFXApp extends Application {
         labelUpperStatusBar.setText("");
     }
     
-    public void setProgressStatusBarText(String text) {
+    public void setLowerStatusBarText(String text) {
         labelLowerStatusBar.setText(text);
     }
     
@@ -406,7 +424,7 @@ public class ZipFXApp extends Application {
                            bytesCompressed, 
                            textCompressed);
                 
-        this.setProgressStatusBarText("Scanned " + text);
+        this.setLowerStatusBarText("Scanned " + text);
     }
     
     private static void zipAllImpl(FileList fileList, File zipFile) 
@@ -499,7 +517,7 @@ public class ZipFXApp extends Application {
     
     private void setFileStatusMessage(String text, long durationMillis) {
         statusMessageTimer.stop();
-        setFileStatusBarText(text);
+        setUpperStatusBarText(text);
         statusMessageTimer.setDuration(Duration.millis(durationMillis));
         statusMessageTimer.setOnFinished(event -> clearFileStatusBarText());
         statusMessageTimer.playFromStart();
@@ -748,17 +766,17 @@ public class ZipFXApp extends Application {
             
             zipTask.setOnSucceeded(zipEvent -> {
                 zipUpdater.halt();
-                setFileStatusBarText("");
+                setUpperStatusBarText("");
                 reportAfterZipping(progress, zipTask);
             });
             
             zipTask.setOnFailed(zipEvent -> {
                 zipUpdater.halt();
-                setFileStatusBarText("");
+                setUpperStatusBarText("");
                 
                 Throwable cause = zipTask.getException();
                 
-                setProgressStatusBarText(
+                setLowerStatusBarText(
                     "Coould not create a .zip file: " + cause.getMessage()
                 );
                 

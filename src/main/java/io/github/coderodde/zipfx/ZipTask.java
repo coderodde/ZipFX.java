@@ -93,48 +93,52 @@ public class ZipTask extends Task<Void> {
     protected Void call() throws Exception {
         long startNanos = System.nanoTime();
         
-        if (sourcePaths.isEmpty()) {
-            throw new IOException("Nothing to zip.");
-        }
-        
-        Path destination = validateDestination();
-        
-        Path temporaryArchive = 
-            Files.createTempFile(
-                    destination.getParent(), 
-                    ".zipfx-", 
-                    ".tmp");
+        Path temporaryArchive = null;
         
         try {
-            try (ZipOutputStream output = new ZipOutputStream(
-                new BufferedOutputStream(
+            checkCancellation();
+            
+            if (sourcePaths.isEmpty()) {
+                throw new IOException("Nothing to zip.");
+            }
+            
+            Path destination = validateDestination();
+            
+            checkCancellation();
+            
+            temporaryArchive = 
+                Files.createTempFile(destination.getParent(), ".zipfx", ".tmp");
+        
+            try (ZipOutputStream output = 
+                new ZipOutputStream(
+                    new BufferedOutputStream(
                         Files.newOutputStream(temporaryArchive)))) {
                 
                 for (Path source : sourcePaths) {
+                    checkCancellation();
+                    
                     addEntry(output, source, source.getFileName().toString());
                 }
             }
             
-            // Closing ZipOutputStream writes the ZIP central directory.
+            checkCancellation();
+            
             long archiveSize = Files.size(temporaryArchive);
             
             checkCancellation();
+            
             publishArchive(temporaryArchive, destination);
             
-            compressedBytes      = archiveSize;
-            durationMilliseconds = TimeUnit.NANOSECONDS
-                                           .toMillis(System.nanoTime() - 
-                                                     startNanos);
+            compressedBytes = archiveSize;
             
+            durationMilliseconds = 
+                TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+        
             return null;
-        } catch (IOException | RuntimeException | Error failure) {
-            try {
+        } finally {
+            if (temporaryArchive != null) {
                 Files.deleteIfExists(temporaryArchive);
-            } catch (IOException cleanupFailure) {
-                failure.addSuppressed(cleanupFailure);
             }
-            
-            throw failure;
         }
     }
     

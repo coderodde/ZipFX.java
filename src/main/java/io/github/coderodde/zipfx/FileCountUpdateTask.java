@@ -54,7 +54,7 @@ public final class FileCountUpdateTask extends Task<Void> {
                 String wordDirectory = wordDirectories(numDirectories);
                 String wordBytes     = wordBytes(numBytes);
                 
-                app.setFileStatusBarText(
+                app.setUpperStatusBarText(
                     "Counted %s %s in %s %s worth %s %s."
                         .formatted(strFiles, 
                                    wordFile, 
