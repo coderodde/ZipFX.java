@@ -1,5 +1,9 @@
 package io.github.coderodde.zipfx;
 
+import static io.github.coderodde.zipfx.Misc.wordBytes;
+import static io.github.coderodde.zipfx.Misc.wordDirectories;
+import static io.github.coderodde.zipfx.Misc.wordFiles;
+import io.github.coderodde.zipfx.buttons.TitleBarButton;
 import io.github.coderodde.zipfx.buttons.ZipFXControlButton;
 import io.github.coderodde.zipfx.buttons.ZipFXControlButton.ButtonIdentity;
 import java.io.File;
@@ -54,29 +58,6 @@ public class ZipFXApp extends Application {
     
     private static final String VERSION = "1.0.0";
     
-    
-    private static final String FXML_TITLE_BAR_BUTTON_CSS = 
-            """
-            -fx-background-color: black;
-            -fx-background-radius: 0;
-            -fx-background-insets: 0;
-            -fx-border-width: 0;
-            -fx-border-color: transparent;
-            -fx-border-radius: 0;
-            -fx-text-fill: white;
-            """;
-    
-    private static final String FXML_TITLE_BAR_BUTTON_CSS_ON_HOVER = 
-            """
-            -fx-background-color: white;
-            -fx-background-radius: 0;
-            -fx-background-insets: 0;
-            -fx-border-width: 0;
-            -fx-border-color: transparent;
-            -fx-border-radius: 0;
-            -fx-text-fill: black;
-            """;
-    
     private State currentState = State.IDLE_EMPTY_LIST;
     
     private final ZipFXControlButton buttonAddFile;  
@@ -85,9 +66,10 @@ public class ZipFXApp extends Application {
     private final ZipFXControlButton buttonZip;
     private final ZipFXControlButton buttonCancel;
     
-    private final Button buttonClose       = new Button("✕");
-    private final Button buttonMinimize    = new Button("─");
-    private final Button buttonMaximize    = new Button("□");
+    private TitleBarButton buttonClose;
+    private TitleBarButton buttonMinimize;
+    private TitleBarButton buttonMaximize;
+
     private final Label labelUpperStatusBar = new Label();
     private final Label labelLowerStatusBar      = new Label();
     private final VBox root                = new VBox();
@@ -108,6 +90,8 @@ public class ZipFXApp extends Application {
     
     private boolean cancellationRequested;
     
+    private Stage stage;
+    
     public ZipFXApp() {
         buttonAddFile   = new ZipFXControlButton(ButtonIdentity.ADD_FILE);
         buttonAddFolder = new ZipFXControlButton(ButtonIdentity.ADD_FOLDER);
@@ -116,8 +100,23 @@ public class ZipFXApp extends Application {
         buttonCancel    = new ZipFXControlButton(ButtonIdentity.CANCEL);
     }
     
+    public Stage getStage() {
+        return stage;
+    }
+    
     @Override
     public void start(Stage stage) throws Exception {
+        this.stage = stage;
+        
+        buttonMinimize = 
+            new TitleBarButton(this, TitleBarButton.ButtonIdentity.MINIMIZE);
+        
+        buttonMaximize = 
+            new TitleBarButton(this, TitleBarButton.ButtonIdentity.MAXIMIZE);
+        
+        buttonClose = 
+            new TitleBarButton(this, TitleBarButton.ButtonIdentity.CLOSE);
+        
         disableButtons();
         giveNamesToControlButtons();
         setAllStyles();
@@ -246,31 +245,6 @@ public class ZipFXApp extends Application {
             buttonMaximize.setText(maximized ? "❐" : "□")
         );
         
-        for (Button button : new Button[] { buttonMinimize, buttonMaximize }) {
-            button.setStyle(FXML_TITLE_BAR_BUTTON_CSS);
-            
-            button.setOnMouseEntered(event -> {
-                button.setStyle(FXML_TITLE_BAR_BUTTON_CSS_ON_HOVER);
-            });
-            
-            button.setOnMouseExited(event -> {
-                button.setStyle(FXML_TITLE_BAR_BUTTON_CSS);
-            });
-        }
-        
-        for (Button button : new Button[] { buttonMinimize,
-                                            buttonMaximize,
-                                            buttonClose}) {
-            
-            button.setMinWidth (TITLE_BAR_BUTTON_WIDTH);
-            button.setPrefWidth(TITLE_BAR_BUTTON_WIDTH);
-            button.setMaxWidth (TITLE_BAR_BUTTON_WIDTH);
-            
-            button.setMinHeight (TITLE_BAR_BUTTON_HEIGHT);
-            button.setPrefHeight(TITLE_BAR_BUTTON_HEIGHT);
-            button.setMaxHeight (TITLE_BAR_BUTTON_HEIGHT);
-        }
-        
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         
@@ -298,7 +272,11 @@ public class ZipFXApp extends Application {
         titleBar.setAlignment(Pos.CENTER_LEFT);
         titleBar.setStyle("""
                           -fx-background-color: black;
-                          -fx-padding: 5px 10px;
+                          -fx-padding: 0;
+                          -fx-border-width: 0;
+                          -fx-border-insets: 0;
+                          -fx-background-insets: 0;
+                          -fx-background-radius: 0;
                           """);
         
         BorderPane rootBorderPane = new BorderPane();
@@ -665,9 +643,8 @@ public class ZipFXApp extends Application {
                     
                     if (cancellationRequested || countTask.isCancelled()) {
                         
-                        setUpperStatusBarText("Zipping cancelled.");
+                        setUpperStatusBarText("Counting files cancelled.");
                         setLowerStatusBarText("");
-                        
                         restoreIdleState();
                         return;
                     }
@@ -677,10 +654,25 @@ public class ZipFXApp extends Application {
                     if (countFailure != null) {
                         setUpperStatusBarText("Could not count files.");
                         setLowerStatusBarText(countFailure.getMessage());
-                        
                         restoreIdleState();
                         return;
                     }
+                    
+                    long bytes       = total.getByteCount();
+                    long files       = total.getFileCount();
+                    long directories = total.getDirectoryCount();
+                    
+                    String str = 
+                        String.format(
+                            "Counted %d %s and %d %s worth %d %s.",
+                            files,
+                            wordFiles(files),
+                            directories,
+                            wordDirectories(directories),
+                            bytes,
+                            wordBytes(bytes));
+                    
+                    setUpperStatusBarText(str);
                     
                     FileZipCountUpdateTask zipUpdater = 
                         new FileZipCountUpdateTask(ZipFXApp.this,

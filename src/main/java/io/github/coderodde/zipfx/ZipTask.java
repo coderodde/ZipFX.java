@@ -25,13 +25,11 @@ import javafx.concurrent.Task;
 public class ZipTask extends Task<Void> {
     
     private static final int BUFFER_SIZE = 64 * 1024;
-    private static final long NANOS_PER_SECOND = 1_000_000_000L;
 
     private final FileDataCounter progressFileDataCounter;
     private final FileZipCountUpdateTask zipCountUpdateTask;
     private final Set<Path> sourcePaths = new LinkedHashSet<>();
     private final Path outputPath;
-    private final byte[] buffer = new byte[BUFFER_SIZE];
     
     private long durationMilliseconds;
     private long compressedBytes;
