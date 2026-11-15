@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
@@ -71,11 +72,11 @@ public class ZipFXApp extends Application {
     private TitleBarButton buttonMaximize;
 
     private final Label labelUpperStatusBar = new Label();
-    private final Label labelLowerStatusBar      = new Label();
-    private final VBox root                = new VBox();
-    private final VBox statusBar           = new VBox();
-    private final HBox toolBar             = new HBox();
-    private final HBox mainUi              = new HBox();
+    private final Label labelLowerStatusBar = new Label();
+    private final VBox root                 = new VBox();
+    private final VBox statusBar            = new VBox();
+    private final HBox toolBar              = new HBox();
+    private final HBox mainUi               = new HBox();
     
     private final FileList fileList = new FileList(this);
     
@@ -120,8 +121,6 @@ public class ZipFXApp extends Application {
         disableButtons();
         giveNamesToControlButtons();
         setAllStyles();
-        
-        stage.setTitle("ZipFX " + VERSION + " by coderodde 2026");
         
         toolBar.getChildren()
                .addAll(buttonAddFile,
@@ -168,6 +167,14 @@ public class ZipFXApp extends Application {
             if (file != null) {
                 fileList.add(new FileListEntry(fileList, file));
             }
+        });
+        
+        buttonRemoveAll.setOnAction(event -> {
+            if (currentState == State.ZIPPING) {
+                return;
+            }
+            
+            fileList.getItems().clear();
         });
         
         buttonZip.setOnAction(event -> {
@@ -229,11 +236,12 @@ public class ZipFXApp extends Application {
         
         stage.initStyle(StageStyle.UNDECORATED);
         
-        Label title = new Label("ZipFX");
+        Label title = new Label("ZipFX " + VERSION + " by coderodde 2026");
+        
+        title.setPadding(new Insets(0, 0, 0, 10));
         title.setStyle("-fx-text-fill: white;");
+        
         buttonClose.setOnAction(event -> stage.close());
-        
-        
         buttonMinimize.setOnAction(event -> stage.setIconified(true));
         buttonMaximize.setOnAction(event -> {
             stage.setMaximized(!stage.isMaximized());
@@ -451,7 +459,12 @@ public class ZipFXApp extends Application {
             buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT)
         );
         
-        toolBar.setStyle("-fx-background-color: black;");
+        labelUpperStatusBar.setStyle(FXML.STATUS_BAR_LABEL);
+        labelLowerStatusBar.setStyle(FXML.STATUS_BAR_LABEL);
+        statusBar.setStyle(FXML.STATUS_BAR);
+        
+        labelUpperStatusBar.setMaxWidth(Double.MAX_VALUE);
+        labelLowerStatusBar.setMaxWidth(Double.MAX_VALUE);
     }
     
     private static final class WindowResizeHandler {
@@ -737,5 +750,23 @@ public class ZipFXApp extends Application {
         
         countUpdaterThread.start();
         countThread.start();
+    }
+    
+    private static final class FXML {
+        static final String STATUS_BAR_LABEL = 
+            """
+            -fx-background: black;
+            -fx-text-fill: white;
+            -fx-font-family: "Consolas";
+            -fx-font-size: 11px;
+            -fx-padding: 2px 5px;
+            """;
+        
+        static final String STATUS_BAR =
+            """
+            -fx-background-color: black;
+            -fx-padding: 0;
+            -fx-spacing: 0;
+            """;
     }
 }
