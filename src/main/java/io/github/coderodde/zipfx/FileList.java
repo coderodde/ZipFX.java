@@ -3,6 +3,7 @@ package io.github.coderodde.zipfx;
 import io.github.coderodde.zipfx.ZipFXApp.State;
 import java.util.Iterator;
 import java.util.Objects;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 
 /**
@@ -56,6 +57,24 @@ public final class FileList extends ListView<FileListEntry>
     
     private void setStyles() {
         setStyle(FXML);
+        
+        setCellFactory(listView -> new ListCell<>() {
+            @Override
+            protected void updateItem(FileListEntry item, boolean empty) {
+                super.updateItem(item, empty);
+                
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setGraphic(item);
+                }
+                
+                setStyle(getIndex() % 2 == 0 
+                    ? "-fx-background-color: #ddd" 
+                    : "-fx-background-color: #ccc");
+            }
+        });
     }
     
     private static final String FXML = 

@@ -17,7 +17,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -227,6 +226,8 @@ public class ZipFXApp extends Application {
                 activeZipUpdater.cancel();
             }
         });
+        
+        toolBar.setStyle("-fx-background-color: black;");
         
         root.getChildren()
             .addAll(toolBar,
