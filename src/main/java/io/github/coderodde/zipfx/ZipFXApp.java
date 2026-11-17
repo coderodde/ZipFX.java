@@ -3,7 +3,7 @@ package io.github.coderodde.zipfx;
 import static io.github.coderodde.zipfx.Misc.wordBytes;
 import static io.github.coderodde.zipfx.Misc.wordDirectories;
 import static io.github.coderodde.zipfx.Misc.wordFiles;
-import io.github.coderodde.zipfx.buttons.TitleBarButton;
+import io.github.coderodde.zipfx.bars.TitleBar;
 import io.github.coderodde.zipfx.buttons.ZipFXControlButton;
 import io.github.coderodde.zipfx.buttons.ZipFXControlButton.ButtonIdentity;
 import java.io.File;
@@ -13,8 +13,6 @@ import java.util.logging.Logger;
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
@@ -23,7 +21,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -48,17 +45,16 @@ public class ZipFXApp extends Application {
     private static final Logger LOGGER = 
                          Logger.getLogger(ZipFXApp.class.getSimpleName());
     
-    private static final double TITLE_BAR_BUTTON_WIDTH  = 40.0;
-    private static final double TITLE_BAR_BUTTON_HEIGHT = 40.0;
-    
     private static final double WINDOW_WIDTH  = 500.0;
     private static final double WINDOW_HEIGHT = 350.0;
     
     private static final long STATUS_MESSAGE_EMPTY_LIST_MILLIS = 3000L;
     
-    private static final String VERSION = "1.0.0";
+    public static final String VERSION = "1.0.0";
     
     private State currentState = State.IDLE_EMPTY_LIST;
+    
+    private final TitleBar titleBar;
     
     private final ZipFXControlButton buttonAddFile;  
     private final ZipFXControlButton buttonAddFolder;
@@ -66,10 +62,6 @@ public class ZipFXApp extends Application {
     private final ZipFXControlButton buttonZip;
     private final ZipFXControlButton buttonCancel;
     
-    private TitleBarButton buttonClose;
-    private TitleBarButton buttonMinimize;
-    private TitleBarButton buttonMaximize;
-
     private final Label labelUpperStatusBar = new Label();
     private final Label labelLowerStatusBar = new Label();
     private final VBox root                 = new VBox();
@@ -93,6 +85,8 @@ public class ZipFXApp extends Application {
     private Stage stage;
     
     public ZipFXApp() {
+        titleBar = new TitleBar(this);
+        
         buttonAddFile   = new ZipFXControlButton(ButtonIdentity.ADD_FILE);
         buttonAddFolder = new ZipFXControlButton(ButtonIdentity.ADD_FOLDER);
         buttonRemoveAll = new ZipFXControlButton(ButtonIdentity.REMOVE_ALL);
@@ -104,18 +98,13 @@ public class ZipFXApp extends Application {
         return stage;
     }
     
+    public VBox getRoot() {
+        return root;
+    }
+    
     @Override
     public void start(Stage stage) throws Exception {
         this.stage = stage;
-        
-        buttonMinimize = 
-            new TitleBarButton(this, TitleBarButton.ButtonIdentity.MINIMIZE);
-        
-        buttonMaximize = 
-            new TitleBarButton(this, TitleBarButton.ButtonIdentity.MAXIMIZE);
-        
-        buttonClose = 
-            new TitleBarButton(this, TitleBarButton.ButtonIdentity.CLOSE);
         
         disableButtons();
         giveNamesToControlButtons();
@@ -237,56 +226,7 @@ public class ZipFXApp extends Application {
         
         stage.initStyle(StageStyle.UNDECORATED);
         
-        Label title = new Label("ZipFX " + VERSION + " by coderodde 2026");
         
-        title.setPadding(new Insets(0, 0, 0, 10));
-        title.setStyle("-fx-text-fill: white;");
-        
-        buttonClose.setOnAction(event -> stage.close());
-        buttonMinimize.setOnAction(event -> stage.setIconified(true));
-        buttonMaximize.setOnAction(event -> {
-            stage.setMaximized(!stage.isMaximized());
-        });
-        
-        stage.maximizedProperty().addListener((observable, 
-                                               oldValue, 
-                                               maximized) -> 
-            buttonMaximize.setText(maximized ? "❐" : "□")
-        );
-        
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        
-        HBox titleBar = new HBox(0, 
-                                 title, 
-                                 spacer,
-                                 buttonMinimize,
-                                 buttonMaximize,
-                                 buttonClose);
-        
-        titleBar.setOnMousePressed(event -> {
-            if (event.getButton() == MouseButton.PRIMARY) {
-                dragOffsetX = event.getScreenX() - stage.getX();
-                dragOffsetY = event.getScreenY() - stage.getY();
-            }
-        });
-        
-        titleBar.setOnMouseDragged(event -> {
-            if (event.isPrimaryButtonDown()) {
-                stage.setX(event.getScreenX() - dragOffsetX);
-                stage.setY(event.getScreenY() - dragOffsetY);
-            }
-        });
-        
-        titleBar.setAlignment(Pos.CENTER_LEFT);
-        titleBar.setStyle("""
-                          -fx-background-color: black;
-                          -fx-padding: 0;
-                          -fx-border-width: 0;
-                          -fx-border-insets: 0;
-                          -fx-background-insets: 0;
-                          -fx-background-radius: 0;
-                          """);
         
         BorderPane rootBorderPane = new BorderPane();
         rootBorderPane.setTop(titleBar);
@@ -426,39 +366,27 @@ public class ZipFXApp extends Application {
     
     private void setAllStyles() {
         
-        // Stylize the "Close window" button:
-        buttonClose.setStyle(ZipAppFXML.TitleBar.CloseButton.CSS_DEFAULT);
-        
-        buttonClose.setOnMouseEntered(
-            event -> 
-                buttonClose.setStyle(ZipAppFXML.TitleBar.CloseButton.CSS_ON_HOVER)
-        );
-        
-        buttonClose.setOnMouseExited(
-            event -> buttonClose.setStyle(ZipAppFXML.TitleBar.CloseButton.CSS_DEFAULT)
-        );
-        
         // Stylize the "Add Folder" button:
-        buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_DEFAULT);
+//        buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_DEFAULT);
         
-        buttonAddFolder.setOnMouseEntered(event ->
-            buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_ON_HOVER)
-        );
-        
-        buttonAddFolder.setOnMouseExited(event -> 
-            buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_DEFAULT)
-        );
-        
-        // Stylize the "Add File" button:
-        buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT);
-        
-        buttonAddFile.setOnMouseEntered(event ->
-            buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_ON_HOVER)
-        );
-        
-        buttonAddFile.setOnMouseExited(event -> 
-            buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT)
-        );
+//        buttonAddFolder.setOnMouseEntered(event ->
+//            buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_ON_HOVER)
+//        );
+//        
+//        buttonAddFolder.setOnMouseExited(event -> 
+//            buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_DEFAULT)
+//        );
+//        
+//        // Stylize the "Add File" button:
+//        buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT);
+//        
+//        buttonAddFile.setOnMouseEntered(event ->
+//            buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_ON_HOVER)
+//        );
+//        
+//        buttonAddFile.setOnMouseExited(event -> 
+//            buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT)
+//        );
         
         labelUpperStatusBar.setStyle(FXML.STATUS_BAR_LABEL);
         labelLowerStatusBar.setStyle(FXML.STATUS_BAR_LABEL);
