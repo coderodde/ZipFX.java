@@ -54,7 +54,7 @@ public class ZipFXApp extends Application {
     
     private State currentState = State.IDLE_EMPTY_LIST;
     
-    private final TitleBar titleBar;
+    private TitleBar titleBar;
     
     private final ZipFXControlButton buttonAddFile;  
     private final ZipFXControlButton buttonAddFolder;
@@ -71,9 +71,6 @@ public class ZipFXApp extends Application {
     
     private final FileList fileList = new FileList(this);
     
-    private double dragOffsetX;
-    private double dragOffsetY;
-    
     private CheckAndCountFilesTask activeCountTask;
     private FileCountUpdateTask activeCountUpdater;
     
@@ -85,8 +82,6 @@ public class ZipFXApp extends Application {
     private Stage stage;
     
     public ZipFXApp() {
-        titleBar = new TitleBar(this);
-        
         buttonAddFile   = new ZipFXControlButton(ButtonIdentity.ADD_FILE);
         buttonAddFolder = new ZipFXControlButton(ButtonIdentity.ADD_FOLDER);
         buttonRemoveAll = new ZipFXControlButton(ButtonIdentity.REMOVE_ALL);
@@ -105,6 +100,7 @@ public class ZipFXApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         this.stage = stage;
+        this.titleBar = new TitleBar(this);
         
         disableButtons();
         giveNamesToControlButtons();

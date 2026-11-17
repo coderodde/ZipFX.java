@@ -137,8 +137,8 @@ public final class TitleBar extends HBox {
         hBoxTitleBar.setAlignment(Pos.CENTER_LEFT);
         hBoxTitleBar.setStyle(FXML.CSS);
         
-        borderPaneRoot.setTop(hBoxTitleBar);
-        borderPaneRoot.setCenter(app.getRoot());
+        getChildren().add(hBoxTitleBar);
+        HBox.setHgrow(hBoxTitleBar, Priority.ALWAYS);
     }
     
     private static final class FXML {
