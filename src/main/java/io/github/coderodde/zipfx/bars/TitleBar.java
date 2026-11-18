@@ -39,6 +39,8 @@ public final class TitleBar extends HBox {
         setPrefHeight(HEIGHT);
         setMaxHeight (HEIGHT);
         
+        setMinWidth(0);
+        
         buttonMinimize =
             new TitleBarButton(app, TitleBarButton.ButtonIdentity.MINIMIZE);
         
@@ -61,7 +63,7 @@ public final class TitleBar extends HBox {
         buttonClose.setOnAction(event -> app.getStage().close());
         
         labelTitle.setPadding(new Insets(0, 0, 0, 10));
-        labelTitle.setStyle("-fx-text-fill: white;");
+        labelTitle.setStyle(FXML.Label.CSS);
         
         app.getStage().maximizedProperty().addListener((observable,
                                                         oldValue,
@@ -70,13 +72,14 @@ public final class TitleBar extends HBox {
         );
         
         HBox.setHgrow(regionSpacer, Priority.ALWAYS);
+        regionSpacer.setMinWidth(0);
+        regionSpacer.setMaxWidth(Double.MAX_VALUE);
         
-        getChildren().addAll(
-                     labelTitle, 
-                     regionSpacer, 
-                     buttonMinimize, 
-                     buttonMaximize, 
-                     buttonClose);
+        getChildren().addAll(labelTitle,
+                             regionSpacer,
+                             buttonMinimize, 
+                             buttonMaximize, 
+                             buttonClose);
         
         setAlignment(Pos.CENTER_LEFT);
         setStyle(FXML.CSS);
@@ -146,11 +149,22 @@ public final class TitleBar extends HBox {
             buttonClose.setStyle(FXML.CloseButton.CSS_DEFAULT)
         );
         
-        HBox.setHgrow(this, Priority.ALWAYS);
         setStyle(FXML.CSS);
     }
     
+    @Override
+    protected double computeMaxWidth(double height) {
+        return Double.MAX_VALUE;
+    }
+    
     private static final class FXML {
+        
+        static final class Label {
+            
+            static final String CSS = """
+                                      -fx-text-fill: white;
+                                      """;
+        }
         
         static final class CloseButton {
             
@@ -207,6 +221,7 @@ public final class TitleBar extends HBox {
         static final String CSS = 
             """
             -fx-background-color: black;
+            -fx-text-fill: white;
             -fx-padding: 0;
             -fx-border-width: 0;
             -fx-border-insets: 0;

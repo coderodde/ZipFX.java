@@ -14,7 +14,6 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
@@ -131,14 +130,14 @@ public class ZipFXApp extends Application {
                     mainUi, 
                     statusBar);
         
-        
         stage.initStyle(StageStyle.UNDECORATED);
         
-        
-        
         BorderPane rootBorderPane = new BorderPane();
+        
         rootBorderPane.setTop(titleBar);
         rootBorderPane.setCenter(root);
+        
+        titleBar.prefWidthProperty().bind(rootBorderPane.widthProperty());
         
         stage.setResizable(true);
         stage.setMinWidth (WINDOW_WIDTH);
@@ -154,6 +153,24 @@ public class ZipFXApp extends Application {
         fileList.setMaxHeight(Double.MAX_VALUE);
         
         stage.show();
+        System.out.println("TitleBar width: " + titleBar.getWidth());
+System.out.println("TitleBar height: " + titleBar.getHeight());
+System.out.println("TitleBar children: " + titleBar.getChildren());
+System.out.println("Scene width: " + scene.getWidth());
+System.out.println("BorderPane width: " + rootBorderPane.getWidth());
+System.out.println("TitleBar width: " + titleBar.getWidth());
+System.out.println("TitleBar layout bounds: "
+                   + titleBar.getLayoutBounds());
+System.out.println("Stage width: " + stage.getWidth());
+System.out.println("Scene width: " + scene.getWidth());
+System.out.println("TitleBar width: " + titleBar.getWidth());
+titleBar.getChildren().forEach(node ->
+    System.out.printf(
+        "%s: x=%.1f, width=",
+        node.getClass().getSimpleName(),
+        node.getLayoutX()
+    )
+);
     }
     
     public static void main(String[] args) {
