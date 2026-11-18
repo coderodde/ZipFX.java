@@ -5,7 +5,7 @@ import javafx.scene.control.Button;
 /**
  * 
  */
-public final class ZipFXControlButton extends Button {
+public final class ToolBarButton extends Button {
     
     public enum ButtonIdentity {
         ADD_FILE,
@@ -18,7 +18,7 @@ public final class ZipFXControlButton extends Button {
     private boolean isEnabled = true;
     private final ButtonIdentity identity;
     
-    public ZipFXControlButton(ButtonIdentity identity) {
+    public ToolBarButton(ButtonIdentity identity) {
         this.identity = identity;
         
         styleAsEnabled();

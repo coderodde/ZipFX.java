@@ -95,7 +95,7 @@ public final class FileZipCountUpdateTask extends Task<Void> {
             
             Platform.runLater(() -> {
                 if (!isCancelled()) {
-                    app.setLowerStatusBarText(statusText);
+                    app.getStatusBar().setLowerStatusBarText(statusText);
 //                    app.setProgressStatusBarText(progressText);
 //                    app.setFileStatusBarText(remainingText);
                 }

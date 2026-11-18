@@ -6,7 +6,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
-import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -16,7 +15,7 @@ import javafx.scene.layout.Region;
  */
 public final class TitleBar extends HBox {
     
-    private static final double WIDTH_HEIGHT = 30.0;
+    private static final double HEIGHT = 30.0;
     
     public enum ButtonIdentity {
         MINIMIZE,
@@ -24,7 +23,6 @@ public final class TitleBar extends HBox {
         CLOSE;
     }
     
-    private ZipFXApp app;
     private final TitleBarButton buttonMinimize;
     private final TitleBarButton buttonMaximize;
     private final TitleBarButton buttonClose;
@@ -32,13 +30,15 @@ public final class TitleBar extends HBox {
         new Label("ZipFX " + ZipFXApp.VERSION + " by coderodde 2026");
     
     private final Region regionSpacer = new Region();
-    private HBox hBoxTitleBar;
-    private final BorderPane borderPaneRoot = new BorderPane();
     
     private double dragOffsetX;
     private double dragOffsetY;
     
     public TitleBar(ZipFXApp app) {
+        setMinHeight (HEIGHT);
+        setPrefHeight(HEIGHT);
+        setMaxHeight (HEIGHT);
+        
         buttonMinimize =
             new TitleBarButton(app, TitleBarButton.ButtonIdentity.MINIMIZE);
         
@@ -47,6 +47,10 @@ public final class TitleBar extends HBox {
         
         buttonClose = 
             new TitleBarButton(app, TitleBarButton.ButtonIdentity.CLOSE);
+        
+        buttonMinimize.setStyle(FXML.MinimizeButton.CSS_DEFAULT);
+        buttonMaximize.setStyle(FXML.MaximizeButton.CSS_DEFAULT);
+        buttonClose.setStyle(FXML.CloseButton.CSS_DEFAULT);
         
         buttonMinimize.setOnAction(event -> app.getStage().setIconified(true));
         buttonMaximize.setOnAction(event -> 
@@ -67,22 +71,24 @@ public final class TitleBar extends HBox {
         
         HBox.setHgrow(regionSpacer, Priority.ALWAYS);
         
-        hBoxTitleBar = 
-            new HBox(0,
+        getChildren().addAll(
                      labelTitle, 
                      regionSpacer, 
                      buttonMinimize, 
                      buttonMaximize, 
                      buttonClose);
         
-        hBoxTitleBar.setOnMousePressed(event -> {
+        setAlignment(Pos.CENTER_LEFT);
+        setStyle(FXML.CSS);
+        
+        setOnMousePressed(event -> {
             if (event.getButton() == MouseButton.PRIMARY) {
                 dragOffsetX = event.getScreenX() - app.getStage().getX();
                 dragOffsetY = event.getScreenY() - app.getStage().getY();
             }
         });
         
-        hBoxTitleBar.setOnMouseDragged(event -> {
+        setOnMouseDragged(event -> {
             if (event.isPrimaryButtonDown()) {
                 app.getStage().setX(event.getScreenX() - dragOffsetX);
                 app.getStage().setY(event.getScreenY() - dragOffsetY);
@@ -90,11 +96,13 @@ public final class TitleBar extends HBox {
         });
         
         // Set the mouse listeners for the Minimize button:
-        if (buttonMinimize.isHover()) {
-            buttonMinimize.setStyle(FXML.MinimizeButton.CSS_ON_HOVER);
-        } else {
-            buttonMinimize.setStyle(FXML.MinimizeButton.CSS_DEFAULT);
-        }
+        buttonMinimize.setOnMouseMoved(event -> 
+            buttonMinimize.setStyle(FXML.MinimizeButton.CSS_ON_HOVER)
+        );
+        
+        buttonMinimize.setOnMouseDragged(event -> 
+            buttonMinimize.setStyle(FXML.MinimizeButton.CSS_ON_HOVER)
+        );
         
         buttonMinimize.setOnMouseEntered(event -> 
             buttonMinimize.setStyle(FXML.MinimizeButton.CSS_ON_HOVER)
@@ -105,11 +113,13 @@ public final class TitleBar extends HBox {
         );
         
         // Set the mouse listeners for the Maximize button:
-        if (buttonMaximize.isHover()) {
-            buttonMaximize.setStyle(FXML.MaximizeButton.CSS_ON_HOVER);
-        } else {
-            buttonMaximize.setStyle(FXML.MaximizeButton.CSS_DEFAULT);
-        }
+        buttonMaximize.setOnMouseMoved(event -> 
+            buttonMaximize.setStyle(FXML.MaximizeButton.CSS_ON_HOVER)
+        );
+        
+        buttonMaximize.setOnMouseDragged(event -> 
+            buttonMaximize.setStyle(FXML.MaximizeButton.CSS_ON_HOVER)
+        );
         
         buttonMaximize.setOnMouseEntered(event -> 
             buttonMaximize.setStyle(FXML.MaximizeButton.CSS_ON_HOVER)
@@ -120,11 +130,13 @@ public final class TitleBar extends HBox {
         );
         
         // Set the mouse listeners for the Close button:
-        if (buttonClose.isHover()) {
-            buttonClose.setStyle(FXML.CloseButton.CSS_ON_HOVER);
-        } else {
-            buttonClose.setStyle(FXML.CloseButton.CSS_DEFAULT);
-        }
+        buttonClose.setOnMouseMoved(event -> 
+            buttonClose.setStyle(FXML.CloseButton.CSS_ON_HOVER)
+        );
+        
+        buttonClose.setOnMouseDragged(event -> 
+            buttonClose.setStyle(FXML.CloseButton.CSS_ON_HOVER)
+        );
         
         buttonClose.setOnMouseEntered(event -> 
             buttonClose.setStyle(FXML.CloseButton.CSS_ON_HOVER)
@@ -134,11 +146,8 @@ public final class TitleBar extends HBox {
             buttonClose.setStyle(FXML.CloseButton.CSS_DEFAULT)
         );
         
-        hBoxTitleBar.setAlignment(Pos.CENTER_LEFT);
-        hBoxTitleBar.setStyle(FXML.CSS);
-        
-        getChildren().add(hBoxTitleBar);
-        HBox.setHgrow(hBoxTitleBar, Priority.ALWAYS);
+        HBox.setHgrow(this, Priority.ALWAYS);
+        setStyle(FXML.CSS);
     }
     
     private static final class FXML {
@@ -147,7 +156,7 @@ public final class TitleBar extends HBox {
             
             static final String CSS_DEFAULT = 
                 """
-                -fx-background-color: transparent;
+                -fx-background-color: black;
                 -fx-text-fill: white;
                 """;
             

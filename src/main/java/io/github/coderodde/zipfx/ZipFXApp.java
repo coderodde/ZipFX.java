@@ -3,14 +3,13 @@ package io.github.coderodde.zipfx;
 import static io.github.coderodde.zipfx.Misc.wordBytes;
 import static io.github.coderodde.zipfx.Misc.wordDirectories;
 import static io.github.coderodde.zipfx.Misc.wordFiles;
+import io.github.coderodde.zipfx.bars.StatusBar;
 import io.github.coderodde.zipfx.bars.TitleBar;
-import io.github.coderodde.zipfx.buttons.ZipFXControlButton;
-import io.github.coderodde.zipfx.buttons.ZipFXControlButton.ButtonIdentity;
+import io.github.coderodde.zipfx.bars.ToolBar;
 import java.io.File;
 import static java.lang.Math.clamp;
 import java.util.Objects;
 import java.util.logging.Logger;
-import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Cursor;
@@ -22,16 +21,17 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import javafx.util.Duration;
 
 /**
  * This JavaFX application is for zipping files and folders.
  */
 public class ZipFXApp extends Application {
+
+    public void setCurrentState(State state) {
+        this.currentState = state;
+    }
     
     public enum State {
         IDLE_EMPTY_LIST,
@@ -39,34 +39,21 @@ public class ZipFXApp extends Application {
         ZIPPING;
     }
     
-    private static final PauseTransition statusMessageTimer = 
-                     new PauseTransition();
-    
     private static final Logger LOGGER = 
                          Logger.getLogger(ZipFXApp.class.getSimpleName());
     
     private static final double WINDOW_WIDTH  = 500.0;
     private static final double WINDOW_HEIGHT = 350.0;
     
-    private static final long STATUS_MESSAGE_EMPTY_LIST_MILLIS = 3000L;
-    
     public static final String VERSION = "1.0.0";
     
     private State currentState = State.IDLE_EMPTY_LIST;
     
-    private TitleBar titleBar;
+    private TitleBar      titleBar;
+    private final ToolBar toolBar;
+    private StatusBar     statusBar;
     
-    private final ZipFXControlButton buttonAddFile;  
-    private final ZipFXControlButton buttonAddFolder;
-    private final ZipFXControlButton buttonRemoveAll;
-    private final ZipFXControlButton buttonZip;
-    private final ZipFXControlButton buttonCancel;
-    
-    private final Label labelUpperStatusBar = new Label();
-    private final Label labelLowerStatusBar = new Label();
     private final VBox root                 = new VBox();
-    private final VBox statusBar            = new VBox();
-    private final HBox toolBar              = new HBox();
     private final HBox mainUi               = new HBox();
     
     private final FileList fileList = new FileList(this);
@@ -77,20 +64,47 @@ public class ZipFXApp extends Application {
     private ZipTask activeZipTask;
     private FileZipCountUpdateTask activeZipUpdater;
     
-    private boolean cancellationRequested;
+    private volatile boolean cancellationRequested;
     
     private Stage stage;
     
     public ZipFXApp() {
-        buttonAddFile   = new ZipFXControlButton(ButtonIdentity.ADD_FILE);
-        buttonAddFolder = new ZipFXControlButton(ButtonIdentity.ADD_FOLDER);
-        buttonRemoveAll = new ZipFXControlButton(ButtonIdentity.REMOVE_ALL);
-        buttonZip       = new ZipFXControlButton(ButtonIdentity.ZIP);
-        buttonCancel    = new ZipFXControlButton(ButtonIdentity.CANCEL);
+        this.toolBar  = new ToolBar(this);
+    }
+    
+    public State getCurrentState() {
+        return currentState;
     }
     
     public Stage getStage() {
         return stage;
+    }
+    
+    public FileList getFileList() {
+        return fileList;
+    }
+    
+    public StatusBar getStatusBar() {
+        return statusBar;
+    }
+    
+    public void cancelAllTasks() {
+        if (activeCountTask != null) {
+            activeCountTask.cancel();
+        }
+
+        if (activeZipTask != null) {
+            activeZipTask.cancel();
+        }
+
+        if (activeCountUpdater != null) {
+            activeCountUpdater.cancel();
+        }
+
+        if (activeZipUpdater != null) {
+            activeZipUpdater.halt();
+            activeZipUpdater.cancel();
+        }
     }
     
     public VBox getRoot() {
@@ -100,117 +114,15 @@ public class ZipFXApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         this.stage = stage;
+        this.statusBar = new StatusBar();
         this.titleBar = new TitleBar(this);
         
-        disableButtons();
-        giveNamesToControlButtons();
         setAllStyles();
-        
-        toolBar.getChildren()
-               .addAll(buttonAddFile,
-                       buttonAddFolder,
-                       buttonRemoveAll,
-                       buttonZip,
-                       buttonCancel);
         
         mainUi.getChildren().add(fileList);
         
         HBox.setHgrow(fileList, Priority.ALWAYS);
         fileList.setMaxWidth(Double.MAX_VALUE);
-        
-        statusBar.getChildren().addAll(labelUpperStatusBar,
-                                       labelLowerStatusBar);
-        
-        buttonAddFile.setOnAction(eh -> {
-            if (currentState == State.ZIPPING) {
-                return;
-            }
-            
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Choose a file");
-            
-            File file = chooser.showOpenDialog(stage);
-            
-            if (file != null) {
-                fileList.add(new FileListEntry(fileList, file));
-                
-                
-            }
-        });
-        
-        buttonAddFolder.setOnAction(eh -> {
-            if (currentState == State.ZIPPING) {
-                return;
-            }
-            
-            DirectoryChooser chooser = new DirectoryChooser();
-            chooser.setTitle("Choose a folder");
-            
-            File file = chooser.showDialog(stage);
-            
-            if (file != null) {
-                fileList.add(new FileListEntry(fileList, file));
-            }
-        });
-        
-        buttonRemoveAll.setOnAction(event -> {
-            if (currentState == State.ZIPPING) {
-                return;
-            }
-            
-            fileList.getItems().clear();
-        });
-        
-        buttonZip.setOnAction(event -> {
-            if (currentState == State.ZIPPING) {
-                // One zipping operation is already going on.
-                return;
-            }
-            
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Choose the .zip file");
-            
-            chooser.getExtensionFilters()
-                   .add(new FileChooser.ExtensionFilter(
-                           "ZIP archives (*.zip)", 
-                           "*.zip"));
-            
-            File file = chooser.showSaveDialog(stage);
-            
-            if (file != null) {
-                currentState = State.ZIPPING;
-                dispatchZipJob(file);
-            }
-        });
-        
-        buttonCancel.setOnAction(event -> {
-            if (currentState != State.ZIPPING || cancellationRequested) {
-                return;
-            }
-            
-            cancellationRequested = true;
-            buttonCancel.disable();
-            
-            setUpperStatusBarText("Cancelling...");
-            setLowerStatusBarText("");
-            
-            if (activeCountTask != null) {
-                activeCountTask.cancel();
-            }
-            
-            if (activeZipTask != null) {
-                activeZipTask.cancel();
-            }
-            
-            if (activeCountUpdater != null) {
-                activeCountUpdater.cancel();
-            }
-            
-            if (activeZipUpdater != null) {
-                activeZipUpdater.halt();
-                activeZipUpdater.cancel();
-            }
-        });
         
         toolBar.setStyle("-fx-background-color: black;");
         
@@ -252,9 +164,9 @@ public class ZipFXApp extends Application {
         currentState = Objects.requireNonNull(state);
         
         switch (currentState) {
-            case IDLE_EMPTY_LIST     -> setStateForIdleEmptyList();
-            case IDLE_NON_EMPTY_LIST -> setStateForIdleNonEmptyList();
-            case ZIPPING             -> setStateForZipping();
+            case IDLE_EMPTY_LIST     -> toolBar.setStateForIdleEmptyList();
+            case IDLE_NON_EMPTY_LIST -> toolBar.setStateForIdleNonEmptyList();
+            case ZIPPING             -> toolBar.setStateForZipping();
             default -> throw new IllegalStateException("Should not get here.");
         }
     }
@@ -265,48 +177,6 @@ public class ZipFXApp extends Application {
                  : State.IDLE_NON_EMPTY_LIST);
     }
     
-    private void setStateForIdleEmptyList() {
-        buttonAddFile   .enable();
-        buttonAddFolder .enable();
-        
-        buttonCancel    .disable();
-        buttonRemoveAll .disable();
-        buttonZip       .disable();
-    }
-    
-    private void setStateForIdleNonEmptyList() {
-        buttonAddFile   .enable();
-        buttonAddFolder .enable();
-        
-        buttonCancel    .disable();
-        buttonRemoveAll .enable();
-        buttonZip       .enable();
-    }
-    
-    private void setStateForZipping() {
-        buttonAddFile   .disable();
-        buttonAddFolder .disable();
-        
-        buttonCancel    .enable();
-        buttonRemoveAll .disable();
-        buttonZip       .disable();
-    }
-    
-    public void setUpperStatusBarText(String text) {
-        labelUpperStatusBar.setText(text);
-    }
-    
-    private void clearFileStatusBarText() {
-        labelUpperStatusBar.setText("");
-    }
-    
-    public void setLowerStatusBarText(String text) {
-        labelLowerStatusBar.setText(text);
-    }
-    
-    public void statusBarShowEmptyListMessage() {
-        setFileStatusMessage("Nothing to zip.", STATUS_MESSAGE_EMPTY_LIST_MILLIS);
-    }
     
     private void reportAfterZipping(FileDataCounter progressFileDataCounter,
                                     ZipTask zipTask) {
@@ -335,61 +205,11 @@ public class ZipFXApp extends Application {
                            bytesCompressed, 
                            textCompressed);
                 
-        this.setLowerStatusBarText("Scanned " + text);
-    }
-    
-    private void disableButtons() {
-        buttonRemoveAll.disable();
-        buttonZip.disable();
-        buttonCancel.disable();
-    }
-    
-    private void giveNamesToControlButtons() {
-        buttonAddFile  .setText("Add file");
-        buttonAddFolder.setText("Add folder");
-        buttonRemoveAll.setText("Remove all");
-        buttonZip      .setText("Zip");
-        buttonCancel   .setText("Cancel");
-    }
-    
-    private void setFileStatusMessage(String text, long durationMillis) {
-        statusMessageTimer.stop();
-        setUpperStatusBarText(text);
-        statusMessageTimer.setDuration(Duration.millis(durationMillis));
-        statusMessageTimer.setOnFinished(event -> clearFileStatusBarText());
-        statusMessageTimer.playFromStart();
+        statusBar.setLowerStatusBarText("Scanned " + text);
     }
     
     private void setAllStyles() {
         
-        // Stylize the "Add Folder" button:
-//        buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_DEFAULT);
-        
-//        buttonAddFolder.setOnMouseEntered(event ->
-//            buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_ON_HOVER)
-//        );
-//        
-//        buttonAddFolder.setOnMouseExited(event -> 
-//            buttonAddFolder.setStyle(ZipAppFXML.Buttons.AddFolderButton.CSS_DEFAULT)
-//        );
-//        
-//        // Stylize the "Add File" button:
-//        buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT);
-//        
-//        buttonAddFile.setOnMouseEntered(event ->
-//            buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_ON_HOVER)
-//        );
-//        
-//        buttonAddFile.setOnMouseExited(event -> 
-//            buttonAddFile.setStyle(ZipAppFXML.Buttons.AddFileButton.CSS_DEFAULT)
-//        );
-        
-        labelUpperStatusBar.setStyle(FXML.STATUS_BAR_LABEL);
-        labelLowerStatusBar.setStyle(FXML.STATUS_BAR_LABEL);
-        statusBar.setStyle(FXML.STATUS_BAR);
-        
-        labelUpperStatusBar.setMaxWidth(Double.MAX_VALUE);
-        labelLowerStatusBar.setMaxWidth(Double.MAX_VALUE);
     }
     
     private static final class WindowResizeHandler {
@@ -544,7 +364,7 @@ public class ZipFXApp extends Application {
         }
     }
     
-    private void dispatchZipJob(File outputZipFile) {
+    public void dispatchZipJob(File outputZipFile) {
         Objects.requireNonNull(outputZipFile);
         
         cancellationRequested = false;
@@ -581,8 +401,10 @@ public class ZipFXApp extends Application {
                     
                     if (cancellationRequested || countTask.isCancelled()) {
                         
-                        setUpperStatusBarText("Counting files cancelled.");
-                        setLowerStatusBarText("");
+                        statusBar.setUpperStatusBarText(
+                            "Counting files cancelled.");
+                        
+                        statusBar.setLowerStatusBarText("");
                         restoreIdleState();
                         return;
                     }
@@ -590,8 +412,12 @@ public class ZipFXApp extends Application {
                     Throwable countFailure = countTask.getException();
                     
                     if (countFailure != null) {
-                        setUpperStatusBarText("Could not count files.");
-                        setLowerStatusBarText(countFailure.getMessage());
+                        statusBar.setUpperStatusBarText(
+                            "Could not count files.");
+                        
+                        statusBar.setLowerStatusBarText(
+                            countFailure.getMessage());
+                        
                         restoreIdleState();
                         return;
                     }
@@ -610,7 +436,7 @@ public class ZipFXApp extends Application {
                             bytes,
                             wordBytes(bytes));
                     
-                    setUpperStatusBarText(str);
+                    statusBar.setUpperStatusBarText(str);
                     
                     FileZipCountUpdateTask zipUpdater = 
                         new FileZipCountUpdateTask(ZipFXApp.this,
@@ -647,17 +473,21 @@ public class ZipFXApp extends Application {
                                 if (cancellationRequested ||
                                         zipTask.isCancelled()) {
                                     
-                                    setUpperStatusBarText("Zipping cancelled.");
-                                    setLowerStatusBarText("");
+                                    statusBar.setUpperStatusBarText(
+                                        "Zipping cancelled.");
+                                    
+                                    statusBar.setLowerStatusBarText("");
+                                    
                                 } else if (zipTask.getException() != null) {
                                     Throwable cause = zipTask.getException();
                                     
-                                    setUpperStatusBarText(
-                                            "Could not create a .zip file.");
+                                    statusBar.setUpperStatusBarText(
+                                        "Could not create a .zip file.");
                                     
-                                    setLowerStatusBarText(cause.getMessage());
+                                    statusBar.setLowerStatusBarText(
+                                        cause.getMessage());
                                 } else {
-                                    setUpperStatusBarText("");
+                                    statusBar.setUpperStatusBarText("");
                                     
                                     reportAfterZipping(progress, zipTask);
                                 }
@@ -677,21 +507,11 @@ public class ZipFXApp extends Application {
         countThread.start();
     }
     
-    private static final class FXML {
-        static final String STATUS_BAR_LABEL = 
-            """
-            -fx-background: black;
-            -fx-text-fill: white;
-            -fx-font-family: "Consolas";
-            -fx-font-size: 11px;
-            -fx-padding: 2px 5px;
-            """;
-        
-        static final String STATUS_BAR =
-            """
-            -fx-background-color: black;
-            -fx-padding: 0;
-            -fx-spacing: 0;
-            """;
+    public boolean cancellationRequested() {
+        return cancellationRequested;
+    }
+    
+    public void requestCancellation() {
+        cancellationRequested = true;
     }
 }
