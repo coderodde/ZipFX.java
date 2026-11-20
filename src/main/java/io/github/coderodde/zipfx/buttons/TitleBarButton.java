@@ -24,12 +24,12 @@ public final class TitleBarButton extends Button {
         
         Objects.requireNonNull(buttonIdentity);
         
-        setMinWidth(WIDTH_HEIGHT);
-        setMaxWidth(WIDTH_HEIGHT);
+        setMinWidth (WIDTH_HEIGHT);
+        setMaxWidth (WIDTH_HEIGHT);
         setPrefWidth(WIDTH_HEIGHT);
         
-        setMinHeight(WIDTH_HEIGHT);
-        setMaxHeight(WIDTH_HEIGHT);
+        setMinHeight (WIDTH_HEIGHT);
+        setMaxHeight (WIDTH_HEIGHT);
         setPrefHeight(WIDTH_HEIGHT);
         
         switch (buttonIdentity) {
@@ -48,21 +48,13 @@ public final class TitleBarButton extends Button {
             event -> app.getStage().setIconified(true)
         );
         
-        setStyle(FXML.BUTTON_CSS);
+        setStyle(FXML.MinimizeButton.CSS_DEFAULT);
         
-        setOnMouseEntered(
-            event -> setStyle(FXML.BUTTON_CSS_ON_HOVER)
-        );
-        
-        setOnMouseExited(
-            event -> setStyle(FXML.BUTTON_CSS)
-        );
+        setOnMouseMoved  (event -> setStyle(FXML.MinimizeButton.CSS_ON_HOVER));
+        setOnMouseEntered(event -> setStyle(FXML.MinimizeButton.CSS_ON_HOVER));
+        setOnMouseExited (event -> setStyle(FXML.MinimizeButton.CSS_DEFAULT));
         
         setText("─");
-        
-        if (isHover()) {
-            setStyle(FXML.BUTTON_CSS_ON_HOVER);
-        }
     }
     
     private void setAsMaximize() {
@@ -70,19 +62,11 @@ public final class TitleBarButton extends Button {
             app.getStage().setMaximized(!app.getStage().isMaximized())
         );
         
-        setStyle(FXML.BUTTON_CSS);
+        setStyle(FXML.MaximizeButton.CSS_DEFAULT);
         
-        setOnMouseEntered(
-            event -> setStyle(FXML.BUTTON_CSS_ON_HOVER)
-        );
-        
-        setOnMouseExited(
-            event -> setStyle(FXML.BUTTON_CSS)
-        );
-        
-        if (isHover()) {
-            setStyle(FXML.BUTTON_CSS_ON_HOVER);
-        }
+        setOnMouseMoved  (event -> setStyle(FXML.MaximizeButton.CSS_ON_HOVER));
+        setOnMouseEntered(event -> setStyle(FXML.MaximizeButton.CSS_ON_HOVER));
+        setOnMouseExited (event -> setStyle(FXML.MaximizeButton.CSS_DEFAULT));
         
         setText("□");
         
@@ -94,11 +78,73 @@ public final class TitleBarButton extends Button {
     }
     
     private void setAsClose() {
-        setOnAction(event -> app.getStage().close());
+        setOnAction(event -> {
+            // TODO: Cancel possible running zipping.
+            app.getStage().close();
+        });
+        
+        setStyle(FXML.CloseButton.CSS_DEFAULT);
+        
+        setOnMouseMoved  (event -> setStyle(FXML.CloseButton.CSS_ON_HOVER));
+        setOnMouseEntered(event -> setStyle(FXML.CloseButton.CSS_ON_HOVER));
+        setOnMouseExited (event -> setStyle(FXML.CloseButton.CSS_DEFAULT));
+        
         setText("✕");
     }
     
     private static final class FXML {
+        
+        static final class CloseButton {
+            
+            static final String CSS_DEFAULT = 
+                """
+                -fx-background-color: black;
+                -fx-text-fill: white;
+                """;
+            
+            static final String CSS_ON_HOVER = 
+                """                
+                -fx-background-color: #c71e2f;
+                -fx-background-radius: 0;
+                -fx-border-insets: 0;
+                -fx-border-width: 0;
+                -fx-border-color: transparent;
+                -fx-border-radius: 0;
+                -fx-text-fill: white;
+                """;
+        }
+        
+        static final class MinimizeButton {
+            
+            static final String CSS_DEFAULT = 
+                """
+                -fx-background-color: black;
+                -fx-background-radius: 0;
+                -fx-border-insets: 0;
+                -fx-border-width: 0;
+                -fx-border-color: transparent;
+                -fx-border-radius: 0;
+                -fx-text-fill: white;
+                """;
+            
+            static final String CSS_ON_HOVER = 
+                """
+                -fx-background-color: white;
+                -fx-background-radius: 0;
+                -fx-border-insets: 0;
+                -fx-border-width: 0;
+                -fx-border-color: transparent;
+                -fx-border-radius: 0;
+                -fx-text-fill: black;
+                """;
+        }
+        
+        static final class MaximizeButton {
+            
+            // Identical CSS as for the Minimize button:
+            static final String CSS_DEFAULT  = MinimizeButton.CSS_DEFAULT;
+            static final String CSS_ON_HOVER = MinimizeButton.CSS_ON_HOVER;
+        }
         
         static final String BUTTON_CSS = 
             """
