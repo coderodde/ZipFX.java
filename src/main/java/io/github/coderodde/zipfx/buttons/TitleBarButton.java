@@ -32,6 +32,12 @@ public final class TitleBarButton extends Button {
         setMaxHeight (WIDTH_HEIGHT);
         setPrefHeight(WIDTH_HEIGHT);
         
+        setSnapToPixel(false);
+        setEffect(null);
+        setTranslateY(0);
+        setScaleY(1);
+        setRotate(0);
+        
         switch (buttonIdentity) {
             case MINIMIZE -> setAsMinimize();
             case MAXIMIZE -> setAsMaximize();

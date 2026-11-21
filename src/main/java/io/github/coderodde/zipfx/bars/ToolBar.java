@@ -7,6 +7,8 @@ import io.github.coderodde.zipfx.buttons.ToolBarButton.ButtonIdentity;
 import io.github.coderodde.zipfx.buttons.ToolBarButton;
 import java.io.File;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 
@@ -31,11 +33,23 @@ public final class ToolBar extends HBox {
         buttonZip       = new ToolBarButton(ButtonIdentity.ZIP);
         buttonCancel    = new ToolBarButton(ButtonIdentity.CANCEL);
         
+        Region regionSpacer = new Region();
+        
+        regionSpacer.setStyle("-fx-background-color: black;");
+        regionSpacer.setMinWidth(0);
+        regionSpacer.setMaxWidth(Double.MAX_VALUE);
+        
+        HBox.setHgrow(regionSpacer, Priority.ALWAYS);
+        
         getChildren().addAll(buttonAddFile,
                              buttonAddFolder,
                              buttonRemoveAll,
                              buttonZip,
-                             buttonCancel);
+                             buttonCancel,
+                             regionSpacer);
+        
+        setStyle("-fx-background-color: black;");
+        setMaxWidth(Double.MAX_VALUE);
         
         setButtonEnableStates();
         giveNamesToControlButtons();

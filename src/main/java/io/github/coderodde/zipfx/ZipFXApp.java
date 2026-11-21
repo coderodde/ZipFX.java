@@ -6,6 +6,7 @@ import static io.github.coderodde.zipfx.Misc.wordFiles;
 import io.github.coderodde.zipfx.bars.StatusBar;
 import io.github.coderodde.zipfx.bars.TitleBar;
 import io.github.coderodde.zipfx.bars.ToolBar;
+import io.github.coderodde.zipfx.buttons.TitleBarButton;
 import java.io.File;
 import static java.lang.Math.clamp;
 import java.util.Objects;
@@ -13,12 +14,14 @@ import java.util.logging.Logger;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Cursor;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -135,6 +138,11 @@ public class ZipFXApp extends Application {
         BorderPane rootBorderPane = new BorderPane();
         
         rootBorderPane.setTop(titleBar);
+        
+        root.setMinWidth(0);
+        root.setPrefWidth(Region.USE_COMPUTED_SIZE);
+        root.setMaxWidth(Double.MAX_VALUE);
+        
         rootBorderPane.setCenter(root);
         
         // The following 3 property bindings are important!
@@ -156,6 +164,22 @@ public class ZipFXApp extends Application {
         fileList.setMaxHeight(Double.MAX_VALUE);
         
         stage.show();
+        System.out.println("Root width: " + root.getWidth());
+System.out.println("ToolBar width: " + toolBar.getWidth());
+        for (Node node : titleBar.getChildren()) {
+    if (node instanceof TitleBarButton button) {
+        System.out.printf(
+            "Layout bounds: %s%n" +
+            "Bounds in parent: %s%n" +
+            "Effect: %s%n" +
+            "TranslateY: %.2f%n",
+            button.getLayoutBounds(),
+            button.getBoundsInParent(),
+            button.getEffect(),
+            button.getTranslateY()
+        );
+    }
+}
     }
     
     public static void main(String[] args) {
@@ -169,7 +193,9 @@ public class ZipFXApp extends Application {
             case IDLE_EMPTY_LIST     -> toolBar.setStateForIdleEmptyList();
             case IDLE_NON_EMPTY_LIST -> toolBar.setStateForIdleNonEmptyList();
             case ZIPPING             -> toolBar.setStateForZipping();
-            default -> throw new IllegalStateException("Should not get here.");
+            default -> 
+                throw new EnumConstantNotPresentException(State.class,
+                                                          currentState.name());
         }
     }
     

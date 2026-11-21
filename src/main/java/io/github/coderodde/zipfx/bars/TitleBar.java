@@ -9,6 +9,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.shape.Rectangle;
 
 /**
  * This class implements a title bar for the ZipFX.
@@ -91,12 +92,17 @@ public final class TitleBar extends HBox {
         });
         
         setStyle(FXML.CSS);
+        setSnapToPixel(false);
+        setClip(new Rectangle());
+        
+        Rectangle clip = new Rectangle();
+        
+        clip.widthProperty() .bind(widthProperty());
+        clip.heightProperty().bind(heightProperty());
+        
+        setClip(clip);
+        
     }
-    
-//    @Override
-//    protected double computeMaxWidth(double height) {
-//        return Double.MAX_VALUE;
-//    }
     
     private static final class FXML {
         
@@ -112,10 +118,11 @@ public final class TitleBar extends HBox {
             -fx-background-color: black;
             -fx-text-fill: white;
             -fx-padding: 0;
-            -fx-border-width: 0;
-            -fx-border-insets: 0;
             -fx-background-insets: 0;
             -fx-background-radius: 0;
+            -fx-border-width: 0;
+            -fx-border-insets: 0;
+            -fx-border-radius: 0;
             """;
     }
 }
