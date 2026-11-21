@@ -6,7 +6,6 @@ import static io.github.coderodde.zipfx.Misc.wordFiles;
 import io.github.coderodde.zipfx.bars.StatusBar;
 import io.github.coderodde.zipfx.bars.TitleBar;
 import io.github.coderodde.zipfx.bars.ToolBar;
-import io.github.coderodde.zipfx.buttons.TitleBarButton;
 import java.io.File;
 import static java.lang.Math.clamp;
 import java.util.Objects;
@@ -14,7 +13,6 @@ import java.util.logging.Logger;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Cursor;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -58,7 +56,7 @@ public class ZipFXApp extends Application {
     private final VBox root                 = new VBox();
     private final HBox mainUi               = new HBox();
     
-    private final FileList fileList = new FileList(this);
+    private final FileListView fileList = new FileListView(this);
     
     private CheckAndCountFilesTask activeCountTask;
     private FileCountUpdateTask activeCountUpdater;
@@ -82,7 +80,7 @@ public class ZipFXApp extends Application {
         return stage;
     }
     
-    public FileList getFileList() {
+    public FileListView getFileList() {
         return fileList;
     }
     
@@ -164,22 +162,6 @@ public class ZipFXApp extends Application {
         fileList.setMaxHeight(Double.MAX_VALUE);
         
         stage.show();
-        System.out.println("Root width: " + root.getWidth());
-System.out.println("ToolBar width: " + toolBar.getWidth());
-        for (Node node : titleBar.getChildren()) {
-    if (node instanceof TitleBarButton button) {
-        System.out.printf(
-            "Layout bounds: %s%n" +
-            "Bounds in parent: %s%n" +
-            "Effect: %s%n" +
-            "TranslateY: %.2f%n",
-            button.getLayoutBounds(),
-            button.getBoundsInParent(),
-            button.getEffect(),
-            button.getTranslateY()
-        );
-    }
-}
     }
     
     public static void main(String[] args) {
@@ -240,6 +222,7 @@ System.out.println("ToolBar width: " + toolBar.getWidth());
         
     }
     
+    // Deals with the window resizing logic:
     private static final class WindowResizeHandler {
         private static final double BORDER = 6.0;
         

@@ -11,10 +11,10 @@ import java.util.Objects;
 public final class FileSymbolicLinkException extends RuntimeException  {
     
     private final File file;
-    private final FileListEntry ownerFileListEntry;
+    private final FileListViewEntry ownerFileListEntry;
     
     public FileSymbolicLinkException(File file,
-                                     FileListEntry ownerFileListEntry) {
+                                     FileListViewEntry ownerFileListEntry) {
         this.file =
             Objects.requireNonNull(
                 file, 
@@ -40,7 +40,7 @@ public final class FileSymbolicLinkException extends RuntimeException  {
         return file;
     }
     
-    public FileListEntry getOwnerFileListEntry() {
+    public FileListViewEntry getOwnerFileListEntry() {
         return ownerFileListEntry;
     }
 }

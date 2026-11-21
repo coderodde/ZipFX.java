@@ -38,7 +38,7 @@ public class ZipTask extends Task<Void> {
     public ZipTask(FileDataCounter totalFileDataCounter,
                    FileDataCounter progressFileDataCounter,
                    FileZipCountUpdateTask zipCountUpdateTask,
-                   FileList fileList,
+                   FileListView fileList,
                    File zipOutputFile,
                    ZipFXApp app) {
         
@@ -67,7 +67,7 @@ public class ZipTask extends Task<Void> {
                     .toAbsolutePath()
                     .normalize();
         
-        for (FileListEntry entry : fileList) {
+        for (FileListViewEntry entry : fileList) {
             sourcePaths.add(entry.file()
                                  .toPath()
                                  .toAbsolutePath()

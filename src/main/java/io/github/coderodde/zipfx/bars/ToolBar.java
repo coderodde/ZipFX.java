@@ -1,7 +1,7 @@
 package io.github.coderodde.zipfx.bars;
 
-import io.github.coderodde.zipfx.FileList;
-import io.github.coderodde.zipfx.FileListEntry;
+import io.github.coderodde.zipfx.FileListView;
+import io.github.coderodde.zipfx.FileListViewEntry;
 import io.github.coderodde.zipfx.ZipFXApp;
 import io.github.coderodde.zipfx.buttons.ToolBarButton.ButtonIdentity;
 import io.github.coderodde.zipfx.buttons.ToolBarButton;
@@ -112,8 +112,8 @@ public final class ToolBar extends HBox {
             File file = chooser.showOpenDialog(app.getStage());
             
             if (file != null) {
-                FileList fileList = app.getFileList();
-                fileList.add(new FileListEntry(fileList, file));
+                FileListView fileList = app.getFileList();
+                fileList.add(new FileListViewEntry(fileList, file));
             }
         });
         
@@ -128,8 +128,8 @@ public final class ToolBar extends HBox {
             File file = chooser.showDialog(app.getStage());
             
             if (file != null) {
-                FileList fileList = app.getFileList();
-                fileList.add(new FileListEntry(fileList, file));
+                FileListView fileList = app.getFileList();
+                fileList.add(new FileListViewEntry(fileList, file));
             }
         });
         

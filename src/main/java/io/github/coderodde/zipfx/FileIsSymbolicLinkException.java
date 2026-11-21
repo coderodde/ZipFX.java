@@ -9,10 +9,10 @@ import java.util.Objects;
 public final class FileIsSymbolicLinkException extends RuntimeException {
     
     private final File file;
-    private final FileListEntry fileListEntry;
+    private final FileListViewEntry fileListEntry;
     
     public FileIsSymbolicLinkException(File symbolicLink, 
-                                       FileListEntry entry,
+                                       FileListViewEntry entry,
                                        String message) {
         super(message);
         
@@ -26,7 +26,7 @@ public final class FileIsSymbolicLinkException extends RuntimeException {
         return file;
     }
     
-    public FileListEntry getFileListEntry() {
+    public FileListViewEntry getFileListEntry() {
         return fileListEntry;
     }
 }

@@ -9,24 +9,24 @@ import javafx.scene.control.ListView;
 /**
  * 
  */
-public final class FileList extends ListView<FileListEntry> 
-                            implements Iterable<FileListEntry> {
+public final class FileListView extends ListView<FileListViewEntry> 
+                             implements Iterable<FileListViewEntry> {
     
     private final ZipFXApp app;
     
-    public FileList(ZipFXApp app) {
+    public FileListView(ZipFXApp app) {
         this.app = Objects.requireNonNull(app);
         
         setStyles();
     }
     
-    public void add(FileListEntry entry) {
+    public void add(FileListViewEntry entry) {
         getItems().add(entry);
         
         app.setState(State.IDLE_NON_EMPTY_LIST);
     }
     
-    public void remove(FileListEntry entry) {
+    public void remove(FileListViewEntry entry) {
         getItems().remove(entry);
         
         if (getItems().isEmpty()) {
@@ -34,7 +34,7 @@ public final class FileList extends ListView<FileListEntry>
         }
     }
     
-    public FileListEntry getFileListEntry(int index) {
+    public FileListViewEntry getFileListEntry(int index) {
         return getItems().get(index);
     }
     
@@ -47,12 +47,12 @@ public final class FileList extends ListView<FileListEntry>
     }
 
     @Override
-    public Iterator<FileListEntry> iterator() {
+    public Iterator<FileListViewEntry> iterator() {
         return getItems().iterator();
     }
     
-    public FileListEntry[] toArray() {
-        return getItems().toArray(FileListEntry[]::new);
+    public FileListViewEntry[] toArray() {
+        return getItems().toArray(FileListViewEntry[]::new);
     }
     
     private void setStyles() {
@@ -60,7 +60,7 @@ public final class FileList extends ListView<FileListEntry>
         
         setCellFactory(listView -> new ListCell<>() {
             @Override
-            protected void updateItem(FileListEntry item, boolean empty) {
+            protected void updateItem(FileListViewEntry item, boolean empty) {
                 super.updateItem(item, empty);
                 
                 if (empty || item == null) {

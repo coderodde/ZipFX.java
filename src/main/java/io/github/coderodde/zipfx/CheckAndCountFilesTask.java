@@ -13,10 +13,10 @@ import javafx.concurrent.Task;
  */
 public final class CheckAndCountFilesTask extends Task<Void> {
 
-    private final FileList fileList;
+    private final FileListView fileList;
     private final FileDataCounter counter;
     
-    public CheckAndCountFilesTask(FileList fileList, FileDataCounter counter) {
+    public CheckAndCountFilesTask(FileListView fileList, FileDataCounter counter) {
         this.fileList =
             Objects.requireNonNull(fileList, "The input entry list is null.");
     
@@ -28,7 +28,7 @@ public final class CheckAndCountFilesTask extends Task<Void> {
     protected Void call() throws Exception {
         checkCancellation();
         
-        for (FileListEntry entry : fileList) {
+        for (FileListViewEntry entry : fileList) {
             checkCancellation();
             processEntry(entry);
         }
@@ -37,12 +37,12 @@ public final class CheckAndCountFilesTask extends Task<Void> {
         return null;
     }
     
-    private void processEntry(FileListEntry entry) {
+    private void processEntry(FileListViewEntry entry) {
         checkCancellation();
         processEntryImpl(entry.file(), entry);
     }
     
-    private void processEntryImpl(File file, FileListEntry entry) {
+    private void processEntryImpl(File file, FileListViewEntry entry) {
         checkCancellation();
         
         if (Files.isSymbolicLink(file.toPath())) {
